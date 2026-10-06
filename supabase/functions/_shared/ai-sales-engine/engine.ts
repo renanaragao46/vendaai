@@ -237,6 +237,7 @@ export async function runSalesEngine(input: SalesEngineInput) {
     products: (products ?? []).map((p:any) => ({ id:p.id,name:p.name,price:Number(p.price),promo_price:p.promo_price == null ? null : Number(p.promo_price),stock:p.stock,status:p.status })),
     knowledge: knowledge ?? [],
     agent,
+    company: { payment_methods: org.payment_methods, policies: org.policies },
     intent: decision.intent,
     customerRequestedHuman: decision.intent === "human_request" || decision.needs_human,
   });
