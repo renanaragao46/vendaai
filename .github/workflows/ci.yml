@@ -21,6 +21,8 @@ jobs:
         run: bunx tsc --noEmit
       - name: Lint
         run: bun run lint
+      - name: Unit tests
+        run: bun run test
       - name: Build
         run: bun run build
 
