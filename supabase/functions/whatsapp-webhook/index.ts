@@ -208,7 +208,7 @@ export default {
 
           if (eventError?.code === "23505") {
             const { data: existingEvent, error: existingEventError } = await ctx.supabaseAdmin.from("webhook_events")
-              .select("id,status")
+              .select("id,status,received_at")
               .eq("provider", "META_CLOUD_API")
               .eq("event_key", eventKey)
               .maybeSingle();
