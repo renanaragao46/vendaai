@@ -54,6 +54,8 @@ async function handleMessage(db: any, message: any, contacts: any[], account: an
     return { handoff: true, conversation_id: conversation.id };
   }
 
+  const mediaId = type === "AUDIO" ? String(message?.audio?.id ?? "") : type === "IMAGE" ? String(message?.image?.id ?? "") : type === "DOCUMENT" ? String(message?.document?.id ?? "") : "";
+
   const result = await runSalesEngine({
     db,
     organizationId: account.organization_id,
@@ -62,6 +64,17 @@ async function handleMessage(db: any, message: any, contacts: any[], account: an
     channel: "WHATSAPP",
     customerMessage: text,
   });
+
+  if (result.message_id && mediaId) {
+    const media = type === "AUDIO" ? message.audio : type === "IMAGE" ? message.image : message.document;
+    await db.from("message_attachments").insert({
+      organization_id: account.organization_id,
+      message_id: result.message_id,
+      external_media_id: mediaId,
+      mime_type: media?.mime_type ?? null,
+      file_name: media?.filename ?? null,
+    });
+  }
 
   if (result.status === "success" && result.response) {
     const outbound = await sendText(account.phone_number_id, phone, result.response, token);
@@ -105,6 +118,7 @@ export default {
     if (!token) return Response.json({ error: "WHATSAPP_ACCESS_TOKEN not configured" }, { status: 503 });
 
     let processed = 0;
+    let errors = 0;
     for (const entry of body?.entry ?? []) {
       for (const change of entry?.changes ?? []) {
         if (change?.field !== "messages") continue;
@@ -139,6 +153,7 @@ export default {
             await ctx.supabaseAdmin.from("webhook_events").update({ status: "PROCESSED", processed_at: new Date().toISOString() }).eq("id", event.id);
             processed++;
           } catch (error) {
+            errors++;
             await ctx.supabaseAdmin.from("webhook_events").update({
               status: "ERROR",
               error: error instanceof Error ? error.message : "Unknown error",
@@ -149,6 +164,6 @@ export default {
       }
     }
 
-    return Response.json({ received: true, processed });
+    return Response.json({ received: true, processed, errors }, { status: errors ? 500 : 200 });
   }),
 };
