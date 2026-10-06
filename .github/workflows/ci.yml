@@ -40,3 +40,5 @@ jobs:
         run: deno check supabase/functions/ai-sales-engine/index.ts
       - name: Typecheck WhatsApp Webhook
         run: deno check supabase/functions/whatsapp-webhook/index.ts
+      - name: Typecheck WhatsApp Connect
+        run: deno check supabase/functions/whatsapp-connect/index.ts
