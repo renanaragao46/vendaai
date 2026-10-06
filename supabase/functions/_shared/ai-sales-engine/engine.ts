@@ -341,7 +341,7 @@ export async function runSalesEngine(input: SalesEngineInput) {
         organization_id:organizationId, conversation_id:conversationId,
         reason:handoffReason, status:"OPEN", created_by:input.actorUserId ?? null,
       });
-      if (handoffError) throw handoffError;
+      if (handoffError && handoffError.code !== "23505") throw handoffError;
     }
     return { status: finalResult === "VALIDATION_FAILED" ? "validation_failed" as const : "handoff" as const, conversation_id:conversationId, intent:decision.intent, confidence:decision.confidence, temperature, sales_stage:stage, next_action:"HANDOFF_HUMAN", validation, reason:"Conversa transferida para atendimento humano." };
   }
@@ -367,7 +367,10 @@ export async function runSalesEngine(input: SalesEngineInput) {
       organization_id:organizationId, contact_id:contactId,
       name:decision.customer_memory.name ?? memory?.name ?? null,
       preferences:[...new Set([...existingPreferences, ...decision.customer_memory.preferences])],
-      products_of_interest:decision.customer_memory.products_of_interest ?? memory?.products_of_interest ?? [],
+      products_of_interest: [...new Set([
+        ...((memory?.products_of_interest ?? []) as string[]),
+        ...((decision.customer_memory.products_of_interest ?? []) as string[]),
+      ])],
       objections:[...new Set([...existingObjections, ...decision.customer_memory.objections])],
       purchase_history:orders ?? memory?.purchase_history ?? [],
       last_interaction_at:new Date().toISOString(), sales_stage:stage, temperature,
