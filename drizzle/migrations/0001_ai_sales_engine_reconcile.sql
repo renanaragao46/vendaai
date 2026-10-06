@@ -2,7 +2,7 @@
 -- Safe on both a fresh database and the already-provisioned Lovable Cloud database.
 ALTER TABLE public.agent_configs
   ADD COLUMN IF NOT EXISTS llm_provider text NOT NULL DEFAULT 'openai',
-  ADD COLUMN IF NOT EXISTS llm_model text NOT NULL DEFAULT 'gpt-6-luna';
+  ADD COLUMN IF NOT EXISTS llm_model text NOT NULL DEFAULT 'gpt-5.6-luna';
 
 CREATE TABLE IF NOT EXISTS public.conversations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
