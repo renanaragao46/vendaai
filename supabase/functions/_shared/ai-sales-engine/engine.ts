@@ -114,8 +114,20 @@ export async function runSalesEngine(input: SalesEngineInput) {
       temperature: "COLD",
       last_message_at: new Date().toISOString(),
     }).select().single();
-    if (error || !created) throw error ?? new Error("Não foi possível criar a conversa.");
-    conversationId = created.id;
+    if (error?.code === "23505" && input.channel === "WHATSAPP" && input.contactId) {
+      const { data: existingOpen, error: existingOpenError } = await db.from("conversations")
+        .select("id")
+        .eq("organization_id", organizationId)
+        .eq("contact_id", input.contactId)
+        .eq("channel", "WHATSAPP")
+        .eq("status", "OPEN")
+        .maybeSingle();
+      if (existingOpenError || !existingOpen) throw existingOpenError ?? new Error("Não foi possível localizar a conversa criada em paralelo.");
+      conversationId = existingOpen.id;
+    } else {
+      if (error || !created) throw error ?? new Error("Não foi possível criar a conversa.");
+      conversationId = created.id;
+    }
   }
 
   const { data: conversation } = await db.from("conversations").select("*").eq("id", conversationId).eq("organization_id", organizationId).single();
@@ -147,8 +159,20 @@ export async function runSalesEngine(input: SalesEngineInput) {
         ...(input.externalMessageId ? { external_message_id: input.externalMessageId } : {}),
       },
     }).select().single();
-    if (incomingError || !createdIncoming) throw incomingError ?? new Error("Não foi possível salvar a mensagem.");
-    incoming = createdIncoming;
+    if (incomingError?.code === "23505" && input.externalMessageId) {
+      const { data: existingIncoming, error: existingIncomingError } = await db.from("messages")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .eq("conversation_id", conversationId)
+        .eq("sender_type", "CUSTOMER")
+        .contains("metadata", { external_message_id: input.externalMessageId })
+        .maybeSingle();
+      if (existingIncomingError || !existingIncoming) throw existingIncomingError ?? new Error("Não foi possível localizar a mensagem criada em paralelo.");
+      incoming = existingIncoming;
+    } else {
+      if (incomingError || !createdIncoming) throw incomingError ?? new Error("Não foi possível salvar a mensagem.");
+      incoming = createdIncoming;
+    }
   }
 
   if (input.externalMessageId) {
@@ -359,6 +383,32 @@ export async function runSalesEngine(input: SalesEngineInput) {
       ...(input.externalMessageId ? { external_message_id: input.externalMessageId } : {}),
     },
   }).select().single();
+  if (aiMessageError?.code === "23505" && input.externalMessageId) {
+    const { data: existingAiMessage, error: existingAiError } = await db.from("messages")
+      .select("id,content,metadata")
+      .eq("organization_id", organizationId)
+      .eq("conversation_id", conversationId)
+      .eq("sender_type", "AI")
+      .contains("metadata", { external_message_id: input.externalMessageId })
+      .maybeSingle();
+    if (existingAiError || !existingAiMessage) throw existingAiError ?? new Error("Não foi possível localizar a resposta criada em paralelo.");
+    return {
+      status: "success" as const,
+      conversation_id: conversationId,
+      message_id: incoming.id,
+      ai_message_id: existingAiMessage.id,
+      response: existingAiMessage.content,
+      intent: existingAiMessage.metadata?.intent ?? "unknown",
+      confidence: Number(existingAiMessage.metadata?.confidence ?? 1),
+      temperature: conversation.temperature,
+      sales_stage: conversation.sales_stage,
+      identified_product_id: existingAiMessage.metadata?.identified_product_id ?? null,
+      next_action: existingAiMessage.metadata?.next_action ?? "RESPOND",
+      validation: existingAiMessage.metadata?.validation ?? { valid: true, issues: [], checks: {} },
+      outbound_message_id: existingAiMessage.metadata?.outbound_whatsapp_message_id ?? null,
+      replayed: true,
+    };
+  }
   if (aiMessageError || !aiMessage) throw aiMessageError ?? new Error("Não foi possível salvar a resposta da IA.");
 
   if (contactId) {
