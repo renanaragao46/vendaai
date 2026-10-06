@@ -325,11 +325,23 @@ export async function runSalesEngine(input: SalesEngineInput) {
   }).eq("id",conversationId).eq("organization_id",organizationId);
 
   if (needsHuman) {
-    await db.from("conversation_handoffs").insert({
-      organization_id:organizationId, conversation_id:conversationId,
-      reason:decision.needs_human ? "IA solicitou transferência" : (!validation.valid ? "Falha na validação da resposta" : "Baixa confiança ou reclamação"),
-      status:"OPEN", created_by:input.actorUserId ?? null,
-    });
+    const handoffReason = decision.needs_human
+      ? "IA solicitou transferência"
+      : (!validation.valid ? "Falha na validação da resposta" : "Baixa confiança ou reclamação");
+    const { data: existingHandoff, error: handoffLookupError } = await db.from("conversation_handoffs")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("conversation_id", conversationId)
+      .eq("status", "OPEN")
+      .maybeSingle();
+    if (handoffLookupError) throw handoffLookupError;
+    if (!existingHandoff) {
+      const { error: handoffError } = await db.from("conversation_handoffs").insert({
+        organization_id:organizationId, conversation_id:conversationId,
+        reason:handoffReason, status:"OPEN", created_by:input.actorUserId ?? null,
+      });
+      if (handoffError) throw handoffError;
+    }
     return { status: finalResult === "VALIDATION_FAILED" ? "validation_failed" as const : "handoff" as const, conversation_id:conversationId, intent:decision.intent, confidence:decision.confidence, temperature, sales_stage:stage, next_action:"HANDOFF_HUMAN", validation, reason:"Conversa transferida para atendimento humano." };
   }
 
