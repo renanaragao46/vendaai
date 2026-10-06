@@ -13,8 +13,18 @@ async function handleMessage(db: any, message: any, contacts: any[], account: an
     const { data, error } = await db.from("contacts").insert({
       organization_id: account.organization_id, name: profileName, phone, source: "WHATSAPP", tags: [],
     }).select("id").single();
-    if (error || !data) throw error ?? new Error("Não foi possível criar o contato.");
-    contactId = data.id;
+    if (error?.code === "23505") {
+      const { data: racedContact, error: racedContactError } = await db.from("contacts")
+        .select("id,name")
+        .eq("organization_id", account.organization_id)
+        .eq("phone", phone)
+        .maybeSingle();
+      if (racedContactError || !racedContact) throw racedContactError ?? new Error("Não foi possível localizar o contato criado em paralelo.");
+      contactId = racedContact.id;
+    } else {
+      if (error || !data) throw error ?? new Error("Não foi possível criar o contato.");
+      contactId = data.id;
+    }
   } else if (found.name !== profileName && profileName !== phone) {
     await db.from("contacts").update({ name: profileName }).eq("id", contactId).eq("organization_id", account.organization_id);
   }
