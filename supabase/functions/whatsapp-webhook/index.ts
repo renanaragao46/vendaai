@@ -26,7 +26,11 @@ async function handleMessage(db: any, message: any, contacts: any[], account: an
       contactId = data.id;
     }
   } else if (found.name !== profileName && profileName !== phone) {
-    await db.from("contacts").update({ name: profileName }).eq("id", contactId).eq("organization_id", account.organization_id);
+    const { error: contactUpdateError } = await db.from("contacts")
+      .update({ name: profileName })
+      .eq("id", contactId)
+      .eq("organization_id", account.organization_id);
+    if (contactUpdateError) throw contactUpdateError;
   }
 
   const { data: conversation } = await db.from("conversations")
@@ -65,7 +69,7 @@ async function handleMessage(db: any, message: any, contacts: any[], account: an
       .maybeSingle();
     if (existingHumanMessageError) throw existingHumanMessageError;
     if (!existingHumanMessage) {
-      await db.from("messages").insert({
+      const { error: humanMessageError } = await db.from("messages").insert({
         organization_id: account.organization_id, conversation_id: conversation.id, sender_type: "CUSTOMER",
         message_type: type, content: text, status: "SENT",
         metadata: {
@@ -75,6 +79,7 @@ async function handleMessage(db: any, message: any, contacts: any[], account: an
           phone_number_id: account.phone_number_id,
         },
       });
+      if (humanMessageError && humanMessageError.code !== "23505") throw humanMessageError;
     }
     return { handoff: true, conversation_id: conversation.id };
   }
@@ -113,18 +118,26 @@ async function handleMessage(db: any, message: any, contacts: any[], account: an
 
   if (result.status === "success" && result.response) {
     const outbound = await sendText(account.phone_number_id, phone, result.response, token);
+    const { data: currentAiMessage, error: currentAiMessageError } = await db.from("messages")
+      .select("metadata")
+      .eq("id", result.ai_message_id)
+      .eq("organization_id", account.organization_id)
+      .maybeSingle();
+    if (currentAiMessageError) throw currentAiMessageError;
+    const deliveryMetadata = {
+      ...(currentAiMessage?.metadata ?? {}),
+      external_message_id: String(message.id),
+      whatsapp_message_id: message.id,
+      outbound_whatsapp_message_id: outbound?.messages?.[0]?.id ?? null,
+      intent: result.intent ?? "unknown",
+      confidence: result.confidence ?? 1,
+      identified_product_id: result.identified_product_id ?? null,
+      next_action: result.next_action ?? "RESPOND",
+      validation: result.validation ?? { valid: true, issues: [], checks: {} },
+    };
     const { error: deliveryMetadataError } = await db.from("messages").update({
       status: "DELIVERED",
-      metadata: {
-        external_message_id: String(message.id),
-        whatsapp_message_id: message.id,
-        outbound_whatsapp_message_id: outbound?.messages?.[0]?.id ?? null,
-        intent: result.intent ?? "unknown",
-        confidence: result.confidence ?? 1,
-        identified_product_id: result.identified_product_id ?? null,
-        next_action: result.next_action ?? "RESPOND",
-        validation: result.validation ?? { valid: true, issues: [], checks: {} },
-      },
+      metadata: deliveryMetadata,
     }).eq("id", result.ai_message_id).eq("organization_id", account.organization_id);
 
     // The customer already received the WhatsApp message. Do not turn a
