@@ -117,6 +117,13 @@ async function handleMessage(db: any, message: any, contacts: any[], account: an
   }
 
   if (result.status === "success" && result.response) {
+    if (result.replayed) {
+      return {
+        ...result,
+        outbound_message_id: result.outbound_message_id ?? null,
+      };
+    }
+
     const outbound = await sendText(account.phone_number_id, phone, result.response, token);
     const { data: currentAiMessage, error: currentAiMessageError } = await db.from("messages")
       .select("metadata")
