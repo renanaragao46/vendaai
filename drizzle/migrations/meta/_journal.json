@@ -15,6 +15,13 @@
       "when": 1791316200000,
       "tag": "0001_ai_sales_engine_reconcile",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791316500000,
+      "tag": "0002_whatsapp_integration_foundation",
+      "breakpoints": true
     }
   ]
 }
