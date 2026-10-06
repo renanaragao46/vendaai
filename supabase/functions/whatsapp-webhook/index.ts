@@ -1,6 +1,6 @@
 import { withSupabase } from "npm:@supabase/server@^1";
 import { runSalesEngine } from "../_shared/ai-sales-engine/engine.ts";
-import { graph, sendText, transcribe, verifySignature } from "./meta.ts";
+import { sendText, transcribe, verifySignature } from "./meta.ts";
 
 async function handleMessage(db: any, message: any, contacts: any[], account: any, token: string) {
   const phone = String(message?.from ?? "");
