@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CheckCircle2, CircleAlert, MessageSquare, ShieldCheck } from "lucide-react";
+import { CheckCircle2, CircleAlert, MessageSquare, ShieldCheck, PlugZap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { canAdmin, useOrg } from "@/lib/org";
 import { Card } from "@/components/ui/card";
@@ -93,6 +93,16 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
 
   const data = account.data;
   const connected = data?.status === "CONNECTED";
+  const testConnection = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("whatsapp-connect", { body: { organization_id: orgId } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => { toast.success("WhatsApp validado e conectado"); void qc.invalidateQueries({ queryKey: ["whatsapp_account", orgId] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const error = data?.status === "ERROR";
 
   return (
@@ -126,6 +136,9 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
           </div>
         </div>
 
+          <Button className="mt-4" variant="outline" onClick={() => testConnection.mutate()} disabled={!canAdmin(role) || testConnection.isPending || !data?.phone_number_id}>
+            <PlugZap className="mr-2 h-4 w-4" />{testConnection.isPending ? "Validando…" : "Testar e conectar WhatsApp"}
+          </Button>
         <div className="mt-4 flex items-start gap-3 rounded-lg bg-muted/50 p-4 text-xs text-muted-foreground">
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
           <p>Até que a integração oficial esteja configurada e validada, nenhuma mensagem real será enviada e nenhuma conexão será simulada.</p>
