@@ -174,6 +174,7 @@ export async function runSalesEngine(input: SalesEngineInput) {
         identified_product_id: existingAiMessage.metadata?.identified_product_id ?? null,
         next_action: existingAiMessage.metadata?.next_action ?? "RESPOND",
         validation: existingAiMessage.metadata?.validation ?? { valid: true, issues: [], checks: {} },
+        outbound_message_id: existingAiMessage.metadata?.outbound_whatsapp_message_id ?? null,
         replayed: true,
       };
     }
