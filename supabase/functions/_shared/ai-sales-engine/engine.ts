@@ -175,12 +175,53 @@ export async function runSalesEngine(input: SalesEngineInput) {
   if (runError || !runRow) throw runError ?? new Error("Não foi possível registrar AI run.");
   runId = runRow.id;
 
+  if (!agent.is_active) {
+    await db.from("ai_runs").update({
+      result:"PENDING_CONFIGURATION",
+      duration_ms:Date.now()-started,
+      error:"Agente IA está desativado."
+    }).eq("id",runId).eq("organization_id",organizationId);
+    await db.from("ai_actions").insert({
+      organization_id:organizationId,
+      ai_run_id:runId,
+      conversation_id:conversationId,
+      action_type:"PENDING_CONFIGURATION",
+      status:"SELECTED",
+      payload:{ message:"Agente IA está desativado." }
+    });
+    return {
+      status:"pending_configuration" as const,
+      conversation_id:conversationId,
+      reason:"O agente de IA está desativado."
+    };
+  }
+
   if (agent.llm_provider !== "openai") {
     await db.from("ai_runs").update({ result:"PENDING_CONFIGURATION", duration_ms:Date.now()-started, error:"Provedor não suportado nesta versão." }).eq("id",runId).eq("organization_id",organizationId);
     return { status:"pending_configuration" as const, conversation_id:conversationId, reason:"Configuração de IA pendente" };
   }
 
-  const ai = await openAI(agent.llm_model, promptInstructions, input.customerMessage.replace(/^\[AUDIO\]\s*/i, ""));
+  let ai: Awaited<ReturnType<typeof openAI>>;
+  try {
+    ai = await openAI(agent.llm_model, promptInstructions, input.customerMessage.replace(/^\[AUDIO\]\s*/i, ""));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Falha no provedor de IA.";
+    await db.from("ai_runs").update({
+      result:"ERROR",
+      duration_ms:Date.now()-started,
+      error:message
+    }).eq("id",runId).eq("organization_id",organizationId);
+    await db.from("ai_actions").insert({
+      organization_id:organizationId,
+      ai_run_id:runId,
+      conversation_id:conversationId,
+      action_type:"LLM_ERROR",
+      status:"FAILED",
+      payload:{ error:message }
+    });
+    throw error;
+  }
+
   if (!ai.configured) {
     await db.from("ai_runs").update({ result:"PENDING_CONFIGURATION", duration_ms:Date.now()-started, error:"OPENAI_API_KEY não configurada." }).eq("id",runId).eq("organization_id",organizationId);
     await db.from("ai_actions").insert({ organization_id:organizationId, ai_run_id:runId, conversation_id:conversationId, action_type:"PENDING_CONFIGURATION", status:"SELECTED", payload:{ message:"Configuração de IA pendente" } });
