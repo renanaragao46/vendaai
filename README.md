@@ -23,3 +23,6 @@ npm i
 npm run dev
 ```
 
+
+
+<!-- VendaAI implementation synced through GitHub. -->
