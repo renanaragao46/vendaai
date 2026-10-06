@@ -43,6 +43,7 @@ export function useOrg() {
 }
 
 export const canManage = (role: AppRole) => role === "OWNER" || role === "ADMIN" || role === "MANAGER";
+export const canWorkConversations = (role: AppRole) => canManage(role) || role === "AGENT";
 export const canAdmin = (role: AppRole) => role === "OWNER" || role === "ADMIN";
 
 export const ROLE_LABEL: Record<AppRole, string> = {
