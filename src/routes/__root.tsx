@@ -122,12 +122,22 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-      router.invalidate();
-      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
-    });
-    return () => data.subscription.unsubscribe();
+    if (typeof window === "undefined") return;
+
+    // Supabase auth is a browser concern. Never let a missing/temporarily
+    // unavailable runtime configuration crash the entire SSR application.
+    try {
+      const { data } = supabase.auth.onAuthStateChange((event) => {
+        if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+        router.invalidate();
+        if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+      });
+      return () => data.subscription.unsubscribe();
+    } catch (error) {
+      console.error("[Supabase] Auth listener could not initialize", error);
+      reportLovableError(error, { boundary: "root_auth_listener" });
+      return undefined;
+    }
   }, [router, queryClient]);
 
   return (
