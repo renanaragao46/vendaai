@@ -104,6 +104,7 @@ async function handleMessage(db: any, message: any, contacts: any[], account: an
   if (result.status === "success" && result.response) {
     const outbound = await sendText(account.phone_number_id, phone, result.response, token);
     await db.from("messages").update({
+      status: "DELIVERED",
       metadata: {
         external_message_id: String(message.id),
         whatsapp_message_id: message.id,
