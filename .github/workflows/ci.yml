@@ -36,3 +36,5 @@ jobs:
           deno-version: v2.x
       - name: Typecheck AI Sales Engine
         run: deno check supabase/functions/ai-sales-engine/index.ts
+      - name: Typecheck WhatsApp Webhook
+        run: deno check supabase/functions/whatsapp-webhook/index.ts
