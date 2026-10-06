@@ -113,7 +113,7 @@ async function handleMessage(db: any, message: any, contacts: any[], account: an
 
   if (result.status === "success" && result.response) {
     const outbound = await sendText(account.phone_number_id, phone, result.response, token);
-    await db.from("messages").update({
+    const { error: deliveryMetadataError } = await db.from("messages").update({
       status: "DELIVERED",
       metadata: {
         external_message_id: String(message.id),
@@ -126,6 +126,12 @@ async function handleMessage(db: any, message: any, contacts: any[], account: an
         validation: result.validation ?? { valid: true, issues: [], checks: {} },
       },
     }).eq("id", result.ai_message_id).eq("organization_id", account.organization_id);
+
+    // The customer already received the WhatsApp message. Do not turn a
+    // metadata-only persistence failure into a webhook retry, which could
+    // send the same message twice.
+    if (deliveryMetadataError) console.error("Failed to persist WhatsApp delivery metadata", deliveryMetadataError);
+
     return { ...result, outbound_message_id: outbound?.messages?.[0]?.id ?? null };
   }
   return result;
