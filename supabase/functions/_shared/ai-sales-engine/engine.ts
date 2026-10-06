@@ -84,6 +84,7 @@ export type SalesEngineInput = {
   channel?: "SIMULATOR" | "WHATSAPP";
   customerMessage: string;
   actorUserId?: string | null;
+  externalMessageId?: string | null;
 };
 
 export async function runSalesEngine(input: SalesEngineInput) {
@@ -120,16 +121,63 @@ export async function runSalesEngine(input: SalesEngineInput) {
   const { data: conversation } = await db.from("conversations").select("*").eq("id", conversationId).eq("organization_id", organizationId).single();
   if (!conversation) throw new Error("Contexto da conversa não encontrado.");
 
-  const { data: incoming, error: incomingError } = await db.from("messages").insert({
-    organization_id: organizationId,
-    conversation_id: conversationId,
-    sender_type: "CUSTOMER",
-    message_type: input.channel === "WHATSAPP" && input.customerMessage.startsWith("[AUDIO]") ? "AUDIO" : "TEXT",
-    content: input.customerMessage,
-    status: "SENT",
-    metadata: { channel: input.channel ?? "SIMULATOR" },
-  }).select().single();
-  if (incomingError || !incoming) throw incomingError ?? new Error("Não foi possível salvar a mensagem.");
+  let incoming: any = null;
+  if (input.externalMessageId) {
+    const { data: existingIncoming, error: existingIncomingError } = await db.from("messages")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .eq("conversation_id", conversationId)
+      .eq("sender_type", "CUSTOMER")
+      .contains("metadata", { external_message_id: input.externalMessageId })
+      .maybeSingle();
+    if (existingIncomingError) throw existingIncomingError;
+    incoming = existingIncoming;
+  }
+
+  if (!incoming) {
+    const { data: createdIncoming, error: incomingError } = await db.from("messages").insert({
+      organization_id: organizationId,
+      conversation_id: conversationId,
+      sender_type: "CUSTOMER",
+      message_type: input.channel === "WHATSAPP" && input.customerMessage.startsWith("[AUDIO]") ? "AUDIO" : "TEXT",
+      content: input.customerMessage,
+      status: "SENT",
+      metadata: {
+        channel: input.channel ?? "SIMULATOR",
+        ...(input.externalMessageId ? { external_message_id: input.externalMessageId } : {}),
+      },
+    }).select().single();
+    if (incomingError || !createdIncoming) throw incomingError ?? new Error("Não foi possível salvar a mensagem.");
+    incoming = createdIncoming;
+  }
+
+  if (input.externalMessageId) {
+    const { data: existingAiMessage, error: existingAiError } = await db.from("messages")
+      .select("id,content,metadata")
+      .eq("organization_id", organizationId)
+      .eq("conversation_id", conversationId)
+      .eq("sender_type", "AI")
+      .contains("metadata", { external_message_id: input.externalMessageId })
+      .maybeSingle();
+    if (existingAiError) throw existingAiError;
+    if (existingAiMessage) {
+      return {
+        status: "success" as const,
+        conversation_id: conversationId,
+        message_id: incoming.id,
+        ai_message_id: existingAiMessage.id,
+        response: existingAiMessage.content,
+        intent: existingAiMessage.metadata?.intent ?? "unknown",
+        confidence: Number(existingAiMessage.metadata?.confidence ?? 1),
+        temperature: conversation.temperature,
+        sales_stage: conversation.sales_stage,
+        identified_product_id: existingAiMessage.metadata?.identified_product_id ?? null,
+        next_action: existingAiMessage.metadata?.next_action ?? "RESPOND",
+        validation: existingAiMessage.metadata?.validation ?? { valid: true, issues: [], checks: {} },
+        replayed: true,
+      };
+    }
+  }
 
   const { data: recentMessages } = await db.from("messages")
     .select("sender_type,message_type,content,created_at")
@@ -287,7 +335,15 @@ export async function runSalesEngine(input: SalesEngineInput) {
 
   const { data: aiMessage, error: aiMessageError } = await db.from("messages").insert({
     organization_id:organizationId, conversation_id:conversationId, sender_type:"AI", message_type:"TEXT",
-    content:decision.response, status:"SENT", metadata:{ ai_run_id:runId, intent:decision.intent, confidence:decision.confidence },
+    content:decision.response, status:"SENT", metadata:{
+      ai_run_id:runId,
+      intent:decision.intent,
+      confidence:decision.confidence,
+      identified_product_id:decision.identified_product_id,
+      next_action:action,
+      validation,
+      ...(input.externalMessageId ? { external_message_id: input.externalMessageId } : {}),
+    },
   }).select().single();
   if (aiMessageError || !aiMessage) throw aiMessageError ?? new Error("Não foi possível salvar a resposta da IA.");
 
