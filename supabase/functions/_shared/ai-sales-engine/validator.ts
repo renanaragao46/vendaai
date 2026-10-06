@@ -5,9 +5,13 @@ export interface ValidationResult {
 }
 
 function moneyValues(text: string): number[] {
-  return [...text.matchAll(/R\$\s*([0-9]+(?:[.,][0-9]{1,2})?)/gi)].map((m) =>
-    Number((m[1] ?? "0").replace(/\./g, "").replace(",", "."))
-  );
+  return [...text.matchAll(/R\$\s*([0-9]+(?:[.,][0-9]{1,2})?)/gi)].map((m) => {
+    const raw = (m[1] ?? "0").trim();
+    const normalized = raw.includes(",")
+      ? raw.replace(/\./g, "").replace(",", ".")
+      : raw;
+    return Number(normalized);
+  });
 }
 
 export function validateResponse(args: {
@@ -15,6 +19,7 @@ export function validateResponse(args: {
   products: Array<{ id: string; name: string; price: number; promo_price?: number | null; stock?: number | null; status: string }>;
   knowledge: Array<{ kind: string; title: string; content: string }>;
   agent: { words_to_avoid?: string[] | null };
+  company?: { payment_methods?: string[] | null; policies?: string | null };
   intent: string;
   customerRequestedHuman: boolean;
 }): ValidationResult {
@@ -35,13 +40,23 @@ export function validateResponse(args: {
   if (!toneCheck) issues.push(`A resposta contém palavra proibida: ${forbidden.join(", ")}`);
 
   const availabilityClaim = /\b(dispon[ií]vel|tem estoque|em estoque|temos estoque|disponibilidade)\b/i.test(response);
-  const availabilityCheck = !availabilityClaim || args.products.some((p) => p.status === "ACTIVE" && (p.stock === null || Number(p.stock) > 0));
+  const mentionedProducts = args.products.filter((p) => p.name && lower.includes(p.name.toLowerCase()));
+  const availabilityCheck = !availabilityClaim || (
+    mentionedProducts.length > 0
+      ? mentionedProducts.every((p) => p.status === "ACTIVE" && (p.stock === null || Number(p.stock) > 0))
+      : args.products.some((p) => p.status === "ACTIVE" && (p.stock === null || Number(p.stock) > 0))
+  );
   if (!availabilityCheck) issues.push("A resposta afirma disponibilidade sem estoque confirmado.");
 
   const policyClaim = /\b(troca|garantia|entrega|pagamento|cancelamento|reembolso|prazo)\b/i.test(response);
-  const policyCheck = !policyClaim || args.knowledge.some((k) =>
+  const policySource = args.knowledge.some((k) =>
     ["POLICY","RULE","FAQ"].includes(k.kind) && k.content.trim().length > 0
   );
+  const companySource = Boolean(
+    args.company?.policies?.trim() ||
+    (args.company?.payment_methods?.length ?? 0) > 0
+  );
+  const policyCheck = !policyClaim || policySource || companySource;
   if (!policyCheck) issues.push("A resposta aborda política sem fonte de conhecimento correspondente.");
 
   const promiseCheck = !/\b(garanto|com certeza vai|vou te enviar|vou reservar|prometo)\b/i.test(response);
