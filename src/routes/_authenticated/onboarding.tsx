@@ -46,14 +46,34 @@ function Onboarding() {
         onboarding_completed: true,
       }).eq("id", orgId);
       if (error) throw error;
-      // Products: one per line, "Nome - 99,90"
+      // Products: one per line, "Nome - 99,90". Normalize Brazilian
+      // currency and avoid creating duplicate names if onboarding is reopened.
       const rows = f.products.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
         const [name, price] = l.split(/\s+-\s+/);
-        return { organization_id: orgId!, name: name.trim(), price: Number((price ?? "0").replace(",", ".")) || 0 };
-      });
+        const rawPrice = (price ?? "0").trim();
+        const normalizedPrice = rawPrice.includes(",")
+          ? rawPrice.replace(/\./g, "").replace(",", ".")
+          : rawPrice;
+        return {
+          organization_id: orgId!,
+          name: name.trim(),
+          price: Number(normalizedPrice) || 0,
+        };
+      }).filter((row) => row.name);
+
       if (rows.length) {
-        const r = await supabase.from("products").insert(rows);
-        if (r.error) throw r.error;
+        const { data: existingProducts, error: existingProductsError } = await supabase
+          .from("products")
+          .select("name")
+          .eq("organization_id", orgId);
+        if (existingProductsError) throw existingProductsError;
+
+        const existingNames = new Set((existingProducts ?? []).map((product) => product.name.trim().toLowerCase()));
+        const newRows = rows.filter((row) => !existingNames.has(row.name.toLowerCase()));
+        if (newRows.length) {
+          const { error: productInsertError } = await supabase.from("products").insert(newRows);
+          if (productInsertError) throw productInsertError;
+        }
       }
       if (f.ai_tone) await supabase.from("agent_configs").update({ tone: f.ai_tone }).eq("organization_id", orgId);
       await qc.invalidateQueries({ queryKey: ["membership"] });
