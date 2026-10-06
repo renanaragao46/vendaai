@@ -194,7 +194,12 @@ export default {
               .eq("event_key", eventKey)
               .maybeSingle();
             if (existingEventError) throw existingEventError;
-            if (!existingEvent || existingEvent.status === "PROCESSED" || existingEvent.status === "PROCESSING") continue;
+            if (!existingEvent || existingEvent.status === "PROCESSED") continue;
+            if (existingEvent.status === "PROCESSING") {
+              const receivedAt = Date.parse(String(existingEvent.received_at ?? ""));
+              const stale = Number.isFinite(receivedAt) && Date.now() - receivedAt > 10 * 60 * 1000;
+              if (!stale) continue;
+            }
             event = existingEvent;
           } else {
             if (eventError) throw eventError;
@@ -202,10 +207,13 @@ export default {
             event = createdEvent;
           }
 
-          const { data: processingEvent, error: processingError } = await ctx.supabaseAdmin.from("webhook_events")
+          const staleProcessing = event.status === "PROCESSING";
+          const processingQuery = ctx.supabaseAdmin.from("webhook_events")
             .update({ status: "PROCESSING", error: null })
-            .eq("id", event.id)
-            .in("status", ["RECEIVED", "ERROR"])
+            .eq("id", event.id);
+          const { data: processingEvent, error: processingError } = await (staleProcessing
+            ? processingQuery.eq("status", "PROCESSING")
+            : processingQuery.in("status", ["RECEIVED", "ERROR"]))
             .select("id")
             .maybeSingle();
           if (processingError) throw processingError;
