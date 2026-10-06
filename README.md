@@ -23,4 +23,3 @@ npm i
 npm run dev
 ```
 
-<!-- GitHub write-access test: successful -->
