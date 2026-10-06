@@ -183,13 +183,22 @@ export default {
               .eq("event_key", eventKey)
               .maybeSingle();
             if (existingEventError) throw existingEventError;
-            if (!existingEvent || existingEvent.status === "PROCESSED") continue;
+            if (!existingEvent || existingEvent.status === "PROCESSED" || existingEvent.status === "PROCESSING") continue;
             event = existingEvent;
           } else {
             if (eventError) throw eventError;
             if (!createdEvent) continue;
             event = createdEvent;
           }
+
+          const { data: processingEvent, error: processingError } = await ctx.supabaseAdmin.from("webhook_events")
+            .update({ status: "PROCESSING", error: null })
+            .eq("id", event.id)
+            .in("status", ["RECEIVED", "ERROR"])
+            .select("id")
+            .maybeSingle();
+          if (processingError) throw processingError;
+          if (!processingEvent) continue;
 
           try {
             await handleMessage(ctx.supabaseAdmin, message, value.contacts ?? [], account, token);
