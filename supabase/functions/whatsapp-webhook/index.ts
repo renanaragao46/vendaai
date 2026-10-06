@@ -46,11 +46,26 @@ async function handleMessage(db: any, message: any, contacts: any[], account: an
   if (!text.trim()) return { ignored: true };
 
   if (conversation?.ai_state === "HUMAN_ACTIVE") {
-    await db.from("messages").insert({
-      organization_id: account.organization_id, conversation_id: conversation.id, sender_type: "CUSTOMER",
-      message_type: type, content: text, status: "SENT",
-      metadata: { whatsapp_message_id: message.id, phone_number_id: account.phone_number_id },
-    });
+    const { data: existingHumanMessage, error: existingHumanMessageError } = await db.from("messages")
+      .select("id")
+      .eq("organization_id", account.organization_id)
+      .eq("conversation_id", conversation.id)
+      .eq("sender_type", "CUSTOMER")
+      .contains("metadata", { external_message_id: String(message.id) })
+      .maybeSingle();
+    if (existingHumanMessageError) throw existingHumanMessageError;
+    if (!existingHumanMessage) {
+      await db.from("messages").insert({
+        organization_id: account.organization_id, conversation_id: conversation.id, sender_type: "CUSTOMER",
+        message_type: type, content: text, status: "SENT",
+        metadata: {
+          channel: "WHATSAPP",
+          external_message_id: String(message.id),
+          whatsapp_message_id: message.id,
+          phone_number_id: account.phone_number_id,
+        },
+      });
+    }
     return { handoff: true, conversation_id: conversation.id };
   }
 
@@ -68,21 +83,36 @@ async function handleMessage(db: any, message: any, contacts: any[], account: an
 
   if (result.message_id && mediaId) {
     const media = type === "AUDIO" ? message.audio : type === "IMAGE" ? message.image : message.document;
-    await db.from("message_attachments").insert({
-      organization_id: account.organization_id,
-      message_id: result.message_id,
-      external_media_id: mediaId,
-      mime_type: media?.mime_type ?? null,
-      file_name: media?.filename ?? null,
-    });
+    const { data: existingAttachment, error: existingAttachmentError } = await db.from("message_attachments")
+      .select("id")
+      .eq("organization_id", account.organization_id)
+      .eq("message_id", result.message_id)
+      .eq("external_media_id", mediaId)
+      .maybeSingle();
+    if (existingAttachmentError) throw existingAttachmentError;
+    if (!existingAttachment) {
+      await db.from("message_attachments").insert({
+        organization_id: account.organization_id,
+        message_id: result.message_id,
+        external_media_id: mediaId,
+        mime_type: media?.mime_type ?? null,
+        file_name: media?.filename ?? null,
+      });
+    }
   }
 
   if (result.status === "success" && result.response) {
     const outbound = await sendText(account.phone_number_id, phone, result.response, token);
     await db.from("messages").update({
       metadata: {
+        external_message_id: String(message.id),
         whatsapp_message_id: message.id,
         outbound_whatsapp_message_id: outbound?.messages?.[0]?.id ?? null,
+        intent: result.intent ?? "unknown",
+        confidence: result.confidence ?? 1,
+        identified_product_id: result.identified_product_id ?? null,
+        next_action: result.next_action ?? "RESPOND",
+        validation: result.validation ?? { valid: true, issues: [], checks: {} },
       },
     }).eq("id", result.ai_message_id).eq("organization_id", account.organization_id);
     return { ...result, outbound_message_id: outbound?.messages?.[0]?.id ?? null };
