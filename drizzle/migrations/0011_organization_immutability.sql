@@ -39,7 +39,6 @@ BEGIN
     'ai_actions',
     'conversation_handoffs',
     'whatsapp_accounts',
-    'webhook_events',
     'message_attachments'
   ] LOOP
     EXECUTE format('DROP TRIGGER IF EXISTS trg_%s_org_immutable ON public.%I', t, t);
