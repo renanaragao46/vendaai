@@ -26,7 +26,14 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-const emailSchema = z.string().trim().email("E-mail inválido").max(255);
+const emailSchema = z
+  .string()
+  .trim()
+  .max(255, "E-mail muito longo")
+  .refine(
+    (value) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/u.test(value),
+    "Digite um e-mail válido, como nome@empresa.com",
+  );
 const passwordSchema = z.string().min(8, "Mínimo de 8 caracteres").max(72);
 
 function AuthPage() {
@@ -40,7 +47,8 @@ function AuthPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const em = emailSchema.safeParse(email);
+    const normalizedEmail = email.replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
+    const em = emailSchema.safeParse(normalizedEmail);
     if (!em.success) return toast.error(em.error.issues[0].message);
     if (mode !== "forgot") {
       const pw = passwordSchema.safeParse(password);
@@ -99,10 +107,19 @@ function AuthPage() {
             </Button>
           </div>
         ) : (
-          <form onSubmit={submit} className="mt-6 space-y-4">
+          <form onSubmit={submit} noValidate className="mt-6 space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email">E-mail</Label>
-              <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input
+                id="email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
             {mode !== "forgot" && (
               <div className="space-y-1.5">
