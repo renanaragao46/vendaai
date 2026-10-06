@@ -5,4 +5,4 @@ ALTER TABLE public.agent_configs
 
 UPDATE public.agent_configs
 SET llm_model = 'gpt-6-luna'
-WHERE llm_model IS NULL OR trim(llm_model) = '' OR llm_model = 'gpt-6-luna';
+WHERE llm_model IS NULL OR trim(llm_model) = '' OR llm_model IN ('gpt-5.6-luna','gpt-6-luna');
