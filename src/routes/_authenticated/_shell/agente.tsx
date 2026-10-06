@@ -69,9 +69,51 @@ function Simulator({ orgId, role }: { orgId: string; role: ReturnType<typeof use
 
   const setAIState = async (state: "AI_ACTIVE" | "HUMAN_ACTIVE") => {
     if (!conversationId || !canUse) return;
-    const { error } = await (supabase as any).from("conversations").update({ ai_state: state }).eq("id", conversationId).eq("organization_id", orgId);
-    if (error) toast.error(error.message);
-    else toast.success(state === "AI_ACTIVE" ? "IA reativada" : "Conversa assumida pelo humano");
+    const { error } = await (supabase as any).from("conversations")
+      .update({ ai_state: state }).eq("id", conversationId).eq("organization_id", orgId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    if (state === "HUMAN_ACTIVE") {
+      const { data: openHandoff, error: handoffLookupError } = await (supabase as any)
+        .from("conversation_handoffs")
+        .select("id")
+        .eq("organization_id", orgId)
+        .eq("conversation_id", conversationId)
+        .eq("status", "OPEN")
+        .maybeSingle();
+      if (handoffLookupError) {
+        toast.error(handoffLookupError.message);
+        return;
+      }
+      if (!openHandoff) {
+        const { error: handoffError } = await (supabase as any).from("conversation_handoffs").insert({
+          organization_id: orgId,
+          conversation_id: conversationId,
+          reason: "Atendimento assumido manualmente",
+          status: "OPEN",
+          created_by: userId,
+        });
+        if (handoffError) {
+          toast.error(handoffError.message);
+          return;
+        }
+      }
+    } else {
+      const { error: closeError } = await (supabase as any).from("conversation_handoffs")
+        .update({ status: "CLOSED", closed_by: userId, closed_at: new Date().toISOString() })
+        .eq("organization_id", orgId)
+        .eq("conversation_id", conversationId)
+        .eq("status", "OPEN");
+      if (closeError) {
+        toast.error(closeError.message);
+        return;
+      }
+    }
+
+    toast.success(state === "AI_ACTIVE" ? "IA reativada" : "Conversa assumida pelo humano");
   };
 
   const examples = ["Quanto custa?","Tem desconto?","Vocês entregam?","Quero comprar.","Está caro.","Vou pensar.","Posso pagar no Pix?","Quero falar com alguém."];
@@ -149,7 +191,7 @@ function Activity({ orgId }: { orgId: string }) {
 }
 
 function Page() {
-  const { org, role } = useOrg();
+  const { org, role, userId } = useOrg();
   const qc = useQueryClient();
   const q = useQuery({
     queryKey: ["agent_configs", org.id],
