@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Bot, BrainCircuit, CheckCircle2, CircleAlert, MessageSquareText, PauseCircle, PlayCircle, Send, ShieldCheck, UserRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { canManage, useOrg } from "@/lib/org";
+import { canManage, canWorkConversations, useOrg } from "@/lib/org";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +42,7 @@ function Simulator({ orgId, role }: { orgId: string; role: ReturnType<typeof use
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<SimulatorMessage[]>([]);
   const [busy, setBusy] = useState(false);
-  const canUse = canManage(role);
+  const canUse = canWorkConversations(role);
 
   const send = async (value?: string) => {
     const text = (value ?? input).trim();
