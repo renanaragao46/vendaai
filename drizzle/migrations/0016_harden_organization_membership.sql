@@ -10,4 +10,6 @@ CREATE POLICY "owner manages memberships" ON public.memberships
   USING (public.has_org_role(organization_id, ARRAY['OWNER']::public.app_role[]))
   WITH CHECK (public.has_org_role(organization_id, ARRAY['OWNER']::public.app_role[]));
 
--- Direct membership writes remain protected by the OWNER-only RLS policy above.\n-- The bootstrap RPC is SECURITY DEFINER and is the only path that creates the\n-- initial OWNER membership for a new organization.\n
+-- Direct membership writes remain protected by the OWNER-only RLS policy above.
+-- The bootstrap RPC is SECURITY DEFINER and is the only path that creates the
+-- initial OWNER membership for a new organization.
