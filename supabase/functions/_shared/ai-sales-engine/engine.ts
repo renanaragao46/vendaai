@@ -287,6 +287,7 @@ export async function runSalesEngine(input: SalesEngineInput) {
     agent,
     company: { payment_methods: org.payment_methods, policies: org.policies },
     intent: decision.intent,
+    identifiedProductId: decision.identified_product_id,
     customerRequestedHuman: decision.intent === "human_request" || decision.needs_human,
   });
 
