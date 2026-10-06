@@ -26,12 +26,17 @@ BEGIN
   WHILE i < TG_NARGS LOOP
     ref_table := TG_ARGV[i];
     ref_column := TG_ARGV[i + 1];
+    ref_id := (to_jsonb(NEW)->>ref_column)::uuid;
+    IF ref_id IS NULL THEN
+      i := i + 2;
+      CONTINUE;
+    END IF;
+
     EXECUTE format('SELECT organization_id FROM public.%I WHERE id = $1', ref_table)
       INTO ref_org
-      USING (to_jsonb(NEW)->>ref_column)::uuid;
+      USING ref_id;
 
     IF ref_org IS DISTINCT FROM NEW.organization_id THEN
-      ref_id := (to_jsonb(NEW)->>ref_column)::uuid;
       RAISE EXCEPTION 'Cross-organization reference is not allowed: %.% = %', ref_table, ref_column, ref_id;
     END IF;
 
