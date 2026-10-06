@@ -124,7 +124,7 @@ function ConversationsPage() {
             status: "OPEN",
             created_by: userId,
           });
-          if (handoffError) throw handoffError;
+          if (handoffError && handoffError.code !== "23505") throw handoffError;
         }
       } else {
         const { error: closeError } = await (supabase as any).from("conversation_handoffs")
