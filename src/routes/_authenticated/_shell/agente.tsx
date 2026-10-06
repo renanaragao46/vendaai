@@ -96,7 +96,7 @@ function Simulator({ orgId, role, userId }: { orgId: string; role: ReturnType<ty
           status: "OPEN",
           created_by: userId,
         });
-        if (handoffError) {
+        if (handoffError && handoffError.code !== "23505") {
           toast.error(handoffError.message);
           return;
         }
