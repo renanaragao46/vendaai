@@ -23,6 +23,7 @@ describe("AI response validator", () => {
     const result = validateResponse({
       ...base,
       response: "O Plano Premium está por R$ 1.234,56.",
+      identifiedProductId: "p1",
     });
     expect(result.valid).toBe(true);
   });
@@ -54,6 +55,16 @@ describe("AI response validator", () => {
       intent: "payment",
     });
     expect(result.valid).toBe(true);
+  });
+
+  it("rejects a product id that is not in the catalog", () => {
+    const result = validateResponse({
+      ...base,
+      response: "Vou verificar isso para você.",
+      identifiedProductId: "unknown",
+    });
+    expect(result.valid).toBe(false);
+    expect(result.checks.product).toBe(false);
   });
 
   it("rejects unsupported operational promises", () => {
