@@ -18,8 +18,11 @@ export default {
 
       if (error || !membership) return Response.json({ error: "Acesso negado à organização." }, { status: 403 });
 
+      // Membership is verified above. Use the server-side client for the engine so
+      // authenticated AGENT/MANAGER users are not blocked by write RLS policies
+      // intended for direct client access.
       const result = await runSalesEngine({
-        db: ctx.supabase,
+        db: ctx.supabaseAdmin,
         organizationId,
         conversationId: body?.conversation_id ? String(body.conversation_id) : null,
         channel: "SIMULATOR",
