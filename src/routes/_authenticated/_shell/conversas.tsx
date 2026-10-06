@@ -41,7 +41,7 @@ export const Route = createFileRoute("/_authenticated/_shell/conversas")({
 });
 
 function ConversationsPage() {
-  const { org, role } = useOrg();
+  const { org, role, userId } = useOrg();
   const canWork = canWorkConversations(role);
   const qc = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -106,6 +106,34 @@ function ConversationsPage() {
       const { error } = await (supabase as any).from("conversations")
         .update({ ai_state: state }).eq("organization_id", org.id).eq("id", activeId);
       if (error) throw error;
+
+      if (state === "HUMAN_ACTIVE") {
+        const { data: openHandoff, error: handoffLookupError } = await (supabase as any)
+          .from("conversation_handoffs")
+          .select("id")
+          .eq("organization_id", org.id)
+          .eq("conversation_id", activeId)
+          .eq("status", "OPEN")
+          .maybeSingle();
+        if (handoffLookupError) throw handoffLookupError;
+        if (!openHandoff) {
+          const { error: handoffError } = await (supabase as any).from("conversation_handoffs").insert({
+            organization_id: org.id,
+            conversation_id: activeId,
+            reason: "Atendimento assumido manualmente",
+            status: "OPEN",
+            created_by: userId,
+          });
+          if (handoffError) throw handoffError;
+        }
+      } else {
+        const { error: closeError } = await (supabase as any).from("conversation_handoffs")
+          .update({ status: "CLOSED", closed_by: userId, closed_at: new Date().toISOString() })
+          .eq("organization_id", org.id)
+          .eq("conversation_id", activeId)
+          .eq("status", "OPEN");
+        if (closeError) throw closeError;
+      }
     },
     onSuccess: (_, state) => {
       toast.success(state === "AI_ACTIVE" ? "IA devolvida à conversa" : "Conversa assumida pelo humano");
