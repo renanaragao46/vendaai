@@ -258,6 +258,18 @@ export async function runSalesEngine(input: SalesEngineInput) {
     payload:{ intent:decision.intent, confidence:decision.confidence, validation, identified_product_id:decision.identified_product_id },
   });
 
+  if (conversation.sales_stage !== stage || conversation.temperature !== temperature) {
+    await db.from("sales_stage_history").insert({
+      organization_id: organizationId,
+      conversation_id: conversationId,
+      from_stage: conversation.sales_stage,
+      to_stage: stage,
+      from_temperature: conversation.temperature,
+      to_temperature: temperature,
+      reason: `Intento identificado: ${decision.intent}`,
+    });
+  }
+
   await db.from("conversations").update({
     sales_stage:stage, temperature, summary:decision.customer_memory.conversation_summary ?? conversation.summary,
     last_message_at:new Date().toISOString(), ai_state:needsHuman ? "HUMAN_ACTIVE" : "AI_ACTIVE",
