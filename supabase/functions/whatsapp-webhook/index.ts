@@ -63,6 +63,7 @@ async function handleMessage(db: any, message: any, contacts: any[], account: an
     contactId,
     channel: "WHATSAPP",
     customerMessage: text,
+    externalMessageId: String(message.id),
   });
 
   if (result.message_id && mediaId) {
@@ -135,7 +136,8 @@ export default {
 
         for (const message of value?.messages ?? []) {
           const eventKey = `message:${message.id}`;
-          const { data: event, error: eventError } = await ctx.supabaseAdmin.from("webhook_events").insert({
+          let event: any = null;
+          const { data: createdEvent, error: eventError } = await ctx.supabaseAdmin.from("webhook_events").insert({
             organization_id: account.organization_id,
             provider: "META_CLOUD_API",
             event_key: eventKey,
@@ -144,9 +146,20 @@ export default {
             status: "RECEIVED",
           }).select("id").maybeSingle();
 
-          if (eventError?.code === "23505") continue;
-          if (eventError) throw eventError;
-          if (!event) continue;
+          if (eventError?.code === "23505") {
+            const { data: existingEvent, error: existingEventError } = await ctx.supabaseAdmin.from("webhook_events")
+              .select("id,status")
+              .eq("provider", "META_CLOUD_API")
+              .eq("event_key", eventKey)
+              .maybeSingle();
+            if (existingEventError) throw existingEventError;
+            if (!existingEvent || existingEvent.status === "PROCESSED") continue;
+            event = existingEvent;
+          } else {
+            if (eventError) throw eventError;
+            if (!createdEvent) continue;
+            event = createdEvent;
+          }
 
           try {
             await handleMessage(ctx.supabaseAdmin, message, value.contacts ?? [], account, token);
