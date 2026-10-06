@@ -37,7 +37,7 @@ const FIELDS: FieldDef[] = [
 
 type SimulatorMessage = { role: "customer" | "ai" | "system"; content: string; meta?: { intent?: string; temperature?: string; stage?: string; confidence?: number; action?: string } };
 
-function Simulator({ orgId, role }: { orgId: string; role: ReturnType<typeof useOrg>["role"] }) {
+function Simulator({ orgId, role, userId }: { orgId: string; role: ReturnType<typeof useOrg>["role"]; userId: string }) {
   const [conversationId, setConversationId] = useState<string>();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<SimulatorMessage[]>([]);
@@ -225,7 +225,7 @@ function Page() {
             </div>
           </Card>
         </TabsContent>
-        <TabsContent value="test" className="mt-4"><Simulator orgId={org.id} role={role} /></TabsContent>
+        <TabsContent value="test" className="mt-4"><Simulator orgId={org.id} role={role} userId={userId} /></TabsContent>
         <TabsContent value="activity" className="mt-4"><Activity orgId={org.id} /></TabsContent>
       </Tabs>
     </div>
