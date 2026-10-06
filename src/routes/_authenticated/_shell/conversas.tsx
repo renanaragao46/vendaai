@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bot, MessageCircle, PauseCircle, PlayCircle, Search, Send, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { canManage, useOrg } from "@/lib/org";
+import { canWorkConversations, useOrg } from "@/lib/org";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,7 @@ export const Route = createFileRoute("/_authenticated/_shell/conversas")({
 
 function ConversationsPage() {
   const { org, role } = useOrg();
+  const canWork = canWorkConversations(role);
   const qc = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -203,7 +204,7 @@ function ConversationsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge>{active.temperature}</Badge>
-                    {canManage(role) && (
+                    {canWork && (
                       <Button size="sm" variant="outline" onClick={() => stateMutation.mutate(active.ai_state === "AI_ACTIVE" ? "HUMAN_ACTIVE" : "AI_ACTIVE")} disabled={stateMutation.isPending}>
                         {active.ai_state === "AI_ACTIVE" ? <><PauseCircle className="mr-2 h-4 w-4" />Assumir</> : <><PlayCircle className="mr-2 h-4 w-4" />Devolver IA</>}
                       </Button>
@@ -231,8 +232,8 @@ function ConversationsPage() {
                 </ScrollArea>
                 <footer className="border-t p-3">
                   <div className="flex gap-2">
-                    <Input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void sendMutation.mutateAsync(); }} placeholder={active.ai_state === "AI_ACTIVE" ? "Assuma a conversa para responder manualmente" : "Digite a resposta do atendente..."} disabled={!canManage(role) || active.ai_state === "AI_ACTIVE" || sendMutation.isPending} />
-                    <Button onClick={() => void sendMutation.mutateAsync()} disabled={!canManage(role) || active.ai_state === "AI_ACTIVE" || sendMutation.isPending || !draft.trim()}><Send className="mr-2 h-4 w-4" />Enviar</Button>
+                    <Input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void sendMutation.mutateAsync(); }} placeholder={active.ai_state === "AI_ACTIVE" ? "Assuma a conversa para responder manualmente" : "Digite a resposta do atendente..."} disabled={!canWork || active.ai_state === "AI_ACTIVE" || sendMutation.isPending} />
+                    <Button onClick={() => void sendMutation.mutateAsync()} disabled={!canWork || active.ai_state === "AI_ACTIVE" || sendMutation.isPending || !draft.trim()}><Send className="mr-2 h-4 w-4" />Enviar</Button>
                   </div>
                 </footer>
               </>
