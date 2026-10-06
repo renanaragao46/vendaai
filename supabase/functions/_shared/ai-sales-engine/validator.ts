@@ -21,6 +21,7 @@ export function validateResponse(args: {
   agent: { words_to_avoid?: string[] | null };
   company?: { payment_methods?: string[] | null; policies?: string | null };
   intent: string;
+  identifiedProductId?: string | null;
   customerRequestedHuman: boolean;
 }): ValidationResult {
   const response = args.response.trim();
@@ -42,11 +43,14 @@ export function validateResponse(args: {
   const availabilityClaim = /\b(dispon[ií]vel|tem estoque|em estoque|temos estoque|disponibilidade)\b/i.test(response);
   const mentionedProducts = args.products.filter((p) => p.name && lower.includes(p.name.toLowerCase()));
   const availabilityCheck = !availabilityClaim || (
-    mentionedProducts.length > 0
-      ? mentionedProducts.every((p) => p.status === "ACTIVE" && (p.stock === null || Number(p.stock) > 0))
-      : args.products.some((p) => p.status === "ACTIVE" && (p.stock === null || Number(p.stock) > 0))
+    mentionedProducts.length > 0 &&
+    mentionedProducts.every((p) => p.status === "ACTIVE" && (p.stock === null || Number(p.stock) > 0))
   );
-  if (!availabilityCheck) issues.push("A resposta afirma disponibilidade sem estoque confirmado.");
+  if (!availabilityCheck) issues.push("A resposta afirma disponibilidade sem estoque confirmado ou sem produto identificado.");
+
+  const identifiedProductCheck = !args.identifiedProductId ||
+    args.products.some((p) => p.id === args.identifiedProductId);
+  if (!identifiedProductCheck) issues.push("A IA identificou um produto que não pertence ao catálogo.");
 
   const policyClaim = /\b(troca|garantia|entrega|pagamento|cancelamento|reembolso|prazo)\b/i.test(response);
   const policySource = args.knowledge.some((k) =>
@@ -72,7 +76,7 @@ export function validateResponse(args: {
     valid: issues.length === 0,
     issues,
     checks: {
-      product: true,
+      product: identifiedProductCheck,
       price: priceCheck,
       availability: availabilityCheck,
       policy: policyCheck,
