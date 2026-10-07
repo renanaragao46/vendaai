@@ -126,73 +126,8 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
 
 
 
-  const connectQr = useMutation({
-    mutationFn: async () => {
-      const payload = {
-        organization_id: orgId,
-        provider: "WHATSAPP_WEB",
-        status: "PENDING",
-        display_name: data?.display_name ?? null,
-        phone_number: data?.phone_number ?? null,
-        business_account_id: null,
-        phone_number_id: null,
-        gateway_instance_id: data?.gateway_instance_id ?? orgId,
-        gateway_status: "CONNECTING",
-        provider_config: { mode: "self_hosted_web" },
-      };
-      const { error: saveError } = await (supabase as any)
-        .from("whatsapp_accounts")
-        .upsert(payload, { onConflict: "organization_id" });
-      if (saveError) throw saveError;
-      // QR do WhatsApp usa exclusivamente o gateway público. Não chama Edge Function.
-      const gatewayUrl = "https://vendaai-whatsapp-gateway.onrender.com";
-      const instanceId = data?.gateway_instance_id ?? orgId;
-      const response = await fetch(
-        `${gatewayUrl}/v1/instances/${encodeURIComponent(instanceId)}/connect?source=vendaai-direct`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            phone_number: data?.phone_number ?? null,
-            organization_id: orgId,
-          }),
-          cache: "no-store",
-        },
-      );
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(String(result?.error ?? `Gateway error ${response.status}`));
-      return {
-        connected: Boolean(result?.connected),
-        gateway: {
-          instance_id: data?.gateway_instance_id ?? orgId,
-          status: result?.status ?? "CONNECTING",
-          qr: result?.qr ?? null,
-          pairing_code: result?.pairing_code ?? null,
-        },
-      };
-    },
-    onSuccess: (result: { gateway?: { qr?: string | null; pairing_code?: string | null; status?: string } }) => {
-      setQrMode(true);
-      if (result.gateway) setGatewayResult(result.gateway);
-      toast.success(result?.gateway?.qr ? "QR Code gerado. Escaneie com o WhatsApp." : "Conexão iniciada.");
-      void qc.invalidateQueries({ queryKey: ["whatsapp_account", orgId] });
-    },
-    onError: async (e: any) => {
-      setQrMode(true);
-      let message = e?.message || "Não foi possível iniciar a conexão por QR Code.";
-      try {
-        const response = e?.context;
-        if (response?.clone) {
-          const payload = await response.clone().json().catch(() => null);
-          if (payload?.error) message = String(payload.error);
-        }
-      } catch {
-        // Keep the original error.
-      }
-      toast.error(message);
-      void qc.invalidateQueries({ queryKey: ["whatsapp_account", orgId] });
-    },
-  });
+  const directQrUrl = `https://vendaai-whatsapp-gateway.onrender.com/v1/instances/${encodeURIComponent(data?.gateway_instance_id ?? orgId)}/connect?source=vendaai-direct-browser`;
+
 
   const error = data?.status === "ERROR";
 
@@ -240,10 +175,15 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button onClick={() => connectQr.mutate()} disabled={!canAdmin(role) || connectQr.isPending}>
+          <a
+            href={directQrUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-10 items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90"
+          >
             <PlugZap className="mr-2 h-4 w-4" />
-            {connectQr.isPending ? "Gerando QR Code…" : "Conectar WhatsApp por QR Code (gateway direto)"}
-          </Button>
+            Conectar WhatsApp por QR Code
+          </a>
         </div>
         {isWeb && gatewayResult?.qr && !connected && (
           <div className="mt-4 rounded-lg border p-4">
