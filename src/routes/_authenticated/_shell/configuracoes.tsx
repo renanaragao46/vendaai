@@ -118,6 +118,7 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
 
   const data = account.data;
   const connected = data?.status === "CONNECTED";
+  const isWeb = data?.provider === "WHATSAPP_WEB";
 
   useEffect(() => {
     if (!isWeb || !data?.gateway_instance_id || connected) return;
@@ -153,7 +154,7 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
       window.clearTimeout(stop);
     };
   }, [isWeb, data?.gateway_instance_id, connected, orgId, qc]);
-  const isWeb = data?.provider === "WHATSAPP_WEB";
+
   const testConnection = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke("whatsapp-connect", { body: { organization_id: orgId } });
@@ -217,9 +218,9 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
           </div>
         </div>
 
-          <Button className="mt-4" variant="outline" onClick={() => testConnection.mutate()} disabled={!canAdmin(role) || testConnection.isPending || (!isWeb && (!data?.phone_number_id || !data?.business_account_id))}>
-            <PlugZap className="mr-2 h-4 w-4" />{testConnection.isPending ? "Conectando…" : isWeb ? "Gerar conexão WhatsApp" : "Testar e conectar WhatsApp"}
-          </Button>
+        <Button className="mt-4" variant="outline" onClick={() => testConnection.mutate()} disabled={!canAdmin(role) || testConnection.isPending || (!isWeb && (!data?.phone_number_id || !data?.business_account_id))}>
+          <PlugZap className="mr-2 h-4 w-4" />{testConnection.isPending ? "Conectando…" : isWeb ? "Gerar conexão WhatsApp" : "Testar e conectar WhatsApp"}
+        </Button>
         {isWeb && gatewayResult?.qr && !connected && (
           <div className="mt-4 rounded-lg border p-4">
             <p className="font-medium">Escaneie o QR Code no WhatsApp</p>
