@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CheckCircle2, CircleAlert, MessageSquare, ShieldCheck, PlugZap } from "lucide-react";
@@ -118,6 +118,41 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
 
   const data = account.data;
   const connected = data?.status === "CONNECTED";
+
+  useEffect(() => {
+    if (!isWeb || !data?.gateway_instance_id || connected) return;
+    let stopped = false;
+    const poll = async () => {
+      try {
+        const gatewayUrl = import.meta.env.VITE_WHATSAPP_GATEWAY_PUBLIC_URL as string | undefined;
+        if (!gatewayUrl) return;
+        const response = await fetch(`${gatewayUrl.replace(/\/$/, "")}/v1/instances/${encodeURIComponent(data.gateway_instance_id)}/status`);
+        if (!response.ok) return;
+        const result = await response.json();
+        if (stopped) return;
+        if (result?.qr || result?.pairing_code || result?.status === "CONNECTED") {
+          setGatewayResult({
+            qr: result?.qr ?? null,
+            pairing_code: result?.pairing_code ?? null,
+            status: result?.status,
+          });
+        }
+        if (result?.status === "CONNECTED") {
+          void qc.invalidateQueries({ queryKey: ["whatsapp_account", orgId] });
+        }
+      } catch {
+        // The browser must not expose the private gateway token; polling is best-effort.
+      }
+    };
+    void poll();
+    const timer = window.setInterval(poll, 1500);
+    const stop = window.setTimeout(() => window.clearInterval(timer), 30000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+      window.clearTimeout(stop);
+    };
+  }, [isWeb, data?.gateway_instance_id, connected, orgId, qc]);
   const isWeb = data?.provider === "WHATSAPP_WEB";
   const testConnection = useMutation({
     mutationFn: async () => {
@@ -174,7 +209,7 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
                       ? "O número foi preparado. Use o gateway WhatsApp Web para gerar o QR Code e vincular o celular."
                       : "Os identificadores foram validados pela Meta. Agora configure o webhook da Meta; quando o primeiro evento assinado chegar, o VendaAI concluirá a conexão automaticamente."
                     : isWeb
-                      ? "Informe o número. O QR Code será gerado pelo gateway e o WhatsApp poderá ser comum ou Business."
+                      ? "Clique em gerar conexão para iniciar o QR Code. O número pode ser comum ou Business; ele será identificado após o vínculo."
                       : "Informe os identificadores da conta. Token, App Secret e outras credenciais nunca são armazenados nesta tela; ficarão nos Secrets do backend."}
               </p>
               {data?.last_error && <p className="mt-2 text-destructive">{data.last_error}</p>}
@@ -182,7 +217,7 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
           </div>
         </div>
 
-          <Button className="mt-4" variant="outline" onClick={() => testConnection.mutate()} disabled={!canAdmin(role) || testConnection.isPending || (isWeb ? !data?.phone_number : !data?.phone_number_id || !data?.business_account_id)}>
+          <Button className="mt-4" variant="outline" onClick={() => testConnection.mutate()} disabled={!canAdmin(role) || testConnection.isPending || (!isWeb && (!data?.phone_number_id || !data?.business_account_id))}>
             <PlugZap className="mr-2 h-4 w-4" />{testConnection.isPending ? "Conectando…" : isWeb ? "Gerar conexão WhatsApp" : "Testar e conectar WhatsApp"}
           </Button>
         {isWeb && gatewayResult?.qr && !connected && (
