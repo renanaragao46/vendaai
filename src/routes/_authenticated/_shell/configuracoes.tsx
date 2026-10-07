@@ -49,7 +49,7 @@ type WhatsAppAccount = {
 
 const statusLabel: Record<WhatsAppAccount["status"], string> = {
   NOT_CONNECTED: "Não conectado",
-  PENDING: "Configuração pendente",
+  PENDING: "API validada • aguardando webhook",
   CONNECTED: "Conectado",
   ERROR: "Erro",
   DISCONNECTED: "Desconectado",
@@ -101,7 +101,14 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
       if (data?.error) throw new Error(data.error);
       return data;
     },
-    onSuccess: () => { toast.success("WhatsApp validado e conectado"); void qc.invalidateQueries({ queryKey: ["whatsapp_account", orgId] }); },
+    onSuccess: (result: { pending_webhook_verification?: boolean }) => {
+      toast.success(
+        result?.pending_webhook_verification
+          ? "Meta validou a conta. Falta apenas o primeiro webhook chegar ao VendaAI."
+          : "WhatsApp validado e conectado",
+      );
+      void qc.invalidateQueries({ queryKey: ["whatsapp_account", orgId] });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
   const error = data?.status === "ERROR";
@@ -129,15 +136,17 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
               <p className="font-medium">{connected ? "WhatsApp validado" : "Configuração necessária"}</p>
               <p className="mt-1 text-muted-foreground">
                 {connected
-                  ? "A conta foi marcada como conectada após a validação da integração."
-                  : "Informe os identificadores da conta. Token, App Secret e outras credenciais nunca são armazenados nesta tela; ficarão nos Secrets do backend."}
+                  ? "A conta foi marcada como conectada após o recebimento e validação de um webhook assinado da Meta."
+                  : data?.status === "PENDING"
+                    ? "Os identificadores e a assinatura da WABA já foram validados pela Meta. Agora configure o webhook da Meta; quando o primeiro evento assinado chegar, o VendaAI concluirá a conexão automaticamente."
+                    : "Informe os identificadores da conta. Token, App Secret e outras credenciais nunca são armazenados nesta tela; ficarão nos Secrets do backend."}
               </p>
               {data?.last_error && <p className="mt-2 text-destructive">{data.last_error}</p>}
             </div>
           </div>
         </div>
 
-          <Button className="mt-4" variant="outline" onClick={() => testConnection.mutate()} disabled={!canAdmin(role) || testConnection.isPending || !data?.phone_number_id}>
+          <Button className="mt-4" variant="outline" onClick={() => testConnection.mutate()} disabled={!canAdmin(role) || testConnection.isPending || !data?.phone_number_id || !data?.business_account_id}>
             <PlugZap className="mr-2 h-4 w-4" />{testConnection.isPending ? "Validando…" : "Testar e conectar WhatsApp"}
           </Button>
         <div className="mt-4 flex items-start gap-3 rounded-lg bg-muted/50 p-4 text-xs text-muted-foreground">
