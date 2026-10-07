@@ -153,7 +153,60 @@ const server = http.createServer(async (req, res) => {
       if (!instance) return json(res, 400, { error: "instance is required" });
       req.url = `/v1/instances/${encodeURIComponent(instance)}/connect`;
     }
-    if (req.method === "GET" && req.url?.startsWith("/qr?instance=")) { const u = new URL(req.url, "http://localhost"); const id = u.searchParams.get("instance"); if (!id) return json(res, 400, { error: "instance is required" }); req.url = `/v1/instances/${encodeURIComponent(id)}/connect`; }
+    if (req.method === "GET" && req.url?.startsWith("/qr?instance=")) {
+      const u = new URL(req.url, "http://localhost");
+      const id = u.searchParams.get("instance");
+      if (!id) return json(res, 400, { error: "instance is required" });
+
+      const state = await connectInstance(id);
+      await waitForConnectionResult(state);
+
+      const instanceJson = JSON.stringify(id);
+      const safeQr = state.qr ? JSON.stringify(state.qr) : "null";
+      const safeStatus = JSON.stringify(state.status);
+
+      res.writeHead(200, {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store, no-cache, must-revalidate, max-age=0",
+        "pragma": "no-cache",
+        "access-control-allow-origin": "*",
+      });
+
+      return res.end(`<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VendaAI — Conectar WhatsApp</title>
+<style>
+body{font-family:system-ui,-apple-system,sans-serif;background:#f7f7f8;margin:0;padding:32px;text-align:center;color:#111}
+main{max-width:560px;margin:auto;background:#fff;border:1px solid #ddd;border-radius:16px;padding:28px;box-shadow:0 8px 30px #0001}
+img{width:320px;height:320px;object-fit:contain;border:1px solid #ddd;border-radius:12px;padding:10px;background:#fff}
+p{color:#666;line-height:1.5}.ok{font-size:20px;font-weight:700;color:#111}.muted{font-size:14px}
+</style></head><body><main><h1>Conectar WhatsApp</h1><div id="app"></div></main>
+<script>
+const instance=${instanceJson};
+let current={qr:${safeQr},status:${safeStatus}};
+const app=document.getElementById('app');
+function render(s){
+  current=s||current;
+  if(current.status==='CONNECTED'){
+    app.innerHTML='<p class="ok">WhatsApp conectado com sucesso.</p><p class="muted">Você pode fechar esta página e voltar ao VendaAI.</p>';
+    return;
+  }
+  if(current.qr){
+    app.innerHTML='<p>Escaneie este QR Code no WhatsApp:<br><b>Dispositivos conectados → Conectar dispositivo.</b></p><img src="'+current.qr+'" alt="QR Code"><p class="muted">O QR Code é atualizado automaticamente.</p>';
+    return;
+  }
+  app.innerHTML='<p>Aguardando o QR Code do WhatsApp…</p><p class="muted">Não feche esta página.</p>';
+}
+async function refresh(){
+  try{
+    const r=await fetch('/v1/instances/'+encodeURIComponent(instance)+'/status',{cache:'no-store'});
+    if(r.ok) render(await r.json());
+  }catch(e){}
+}
+render(current);
+setInterval(refresh,1000);
+</script></body></html>`);
+    }
     const match = req.url?.match(/^\/v1\/instances\/([^/]+)(?:\/(connect|status|messages|disconnect))?$/);
     if (!match) return json(res, 404, { error: "Not found" });
     const id = decodeURIComponent(match[1]);
@@ -186,7 +239,7 @@ const server = http.createServer(async (req, res) => {
 const initial={qr:${safeQr},status:${safeStatus}};
 const render=s=>{document.getElementById('app').innerHTML=s.status==='CONNECTED'?'<p class="ok">WhatsApp conectado com sucesso.</p>':s.qr?'<p>Escaneie este QR Code no WhatsApp:<br>Dispositivos conectados → Conectar dispositivo.</p><img src="'+s.qr+'" alt="QR Code">':'<p>Aguardando QR Code…</p>'};
 render(initial);
-setInterval(async()=>{try{const r=await fetch(location.pathname.replace('/connect','/status'),{cache:'no-store'});render(await r.json())}catch(e){}},2000);
+setInterval(async()=>{try{const r=await fetch('/v1/instances/${encodeURIComponent(id)}/status',{cache:'no-store'});if(r.ok)render(await r.json())}catch(e){}},1000);
 </script></body></html>`);
     }
     if (req.method === "POST" && action === "connect") {
