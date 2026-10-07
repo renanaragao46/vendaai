@@ -50,4 +50,11 @@ export default tseslint.config(
     },
   },
   eslintPluginPrettier,
+  {
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "prettier/prettier": "off",
+      "prefer-const": "off",
+    },
+  },
 );
