@@ -1,0 +1,17 @@
+name: Keep WhatsApp Gateway Awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping-gateway:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping gateway health endpoint
+        run: |
+          set -e
+          curl --fail --silent --show-error --max-time 30 \
+            https://vendaai-whatsapp-gateway.onrender.com/health
+          echo
