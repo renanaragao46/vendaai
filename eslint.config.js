@@ -40,6 +40,7 @@ export default tseslint.config(
     files: ["supabase/functions/**/*.ts"],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
+      "prettier/prettier": "off",
     },
   },
   eslintPluginPrettier,
