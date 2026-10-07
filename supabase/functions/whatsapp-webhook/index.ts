@@ -195,7 +195,7 @@ export default {
         if (!phoneNumberId) continue;
 
         const { data: account, error } = await ctx.supabaseAdmin.from("whatsapp_accounts")
-          .select("organization_id,status,phone_number_id")
+          .select("organization_id,status,phone_number_id,business_account_id")
           .eq("phone_number_id", phoneNumberId)
           .maybeSingle();
         if (error) throw error;
