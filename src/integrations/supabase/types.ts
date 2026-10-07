@@ -22,6 +22,8 @@ export type Database = {
           id: string
           is_active: boolean
           language_rules: string | null
+          llm_model: string
+          llm_provider: string
           organization_id: string
           personality: string | null
           primary_objective: string | null
@@ -38,6 +40,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           language_rules?: string | null
+          llm_model?: string
+          llm_provider?: string
           organization_id: string
           personality?: string | null
           primary_objective?: string | null
@@ -54,6 +58,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           language_rules?: string | null
+          llm_model?: string
+          llm_provider?: string
           organization_id?: string
           personality?: string | null
           primary_objective?: string | null
@@ -68,6 +74,146 @@ export type Database = {
             foreignKeyName: "agent_configs_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_actions: {
+        Row: {
+          action_type: string
+          ai_run_id: string | null
+          conversation_id: string | null
+          created_at: string
+          id: string
+          organization_id: string
+          payload: Json
+          status: string
+        }
+        Insert: {
+          action_type: string
+          ai_run_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          organization_id: string
+          payload?: Json
+          status?: string
+        }
+        Update: {
+          action_type?: string
+          ai_run_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          organization_id?: string
+          payload?: Json
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_actions_ai_run_id_fkey"
+            columns: ["ai_run_id"]
+            isOneToOne: false
+            referencedRelation: "ai_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_actions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_actions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_runs: {
+        Row: {
+          action: string | null
+          confidence: number | null
+          conversation_id: string | null
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          generated_response: string | null
+          id: string
+          intent: string | null
+          message_id: string | null
+          metadata: Json
+          model: string | null
+          organization_id: string
+          provider: string | null
+          result: string
+          sales_stage: string | null
+          temperature: string | null
+          validation: Json
+        }
+        Insert: {
+          action?: string | null
+          confidence?: number | null
+          conversation_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          generated_response?: string | null
+          id?: string
+          intent?: string | null
+          message_id?: string | null
+          metadata?: Json
+          model?: string | null
+          organization_id: string
+          provider?: string | null
+          result?: string
+          sales_stage?: string | null
+          temperature?: string | null
+          validation?: Json
+        }
+        Update: {
+          action?: string | null
+          confidence?: number | null
+          conversation_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          generated_response?: string | null
+          id?: string
+          intent?: string | null
+          message_id?: string | null
+          metadata?: Json
+          model?: string | null
+          organization_id?: string
+          provider?: string | null
+          result?: string
+          sales_stage?: string | null
+          temperature?: string | null
+          validation?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_runs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_runs_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_runs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -113,6 +259,186 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "contacts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_handoffs: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          conversation_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          organization_id: string
+          reason: string
+          status: string
+        }
+        Insert: {
+          closed_at?: string | null
+          closed_by?: string | null
+          conversation_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id: string
+          reason: string
+          status?: string
+        }
+        Update: {
+          closed_at?: string | null
+          closed_by?: string | null
+          conversation_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id?: string
+          reason?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_handoffs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_handoffs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          ai_state: string
+          channel: string
+          contact_id: string | null
+          created_at: string
+          id: string
+          last_message_at: string | null
+          organization_id: string
+          sales_stage: string
+          status: string
+          summary: string | null
+          temperature: string
+          updated_at: string
+        }
+        Insert: {
+          ai_state?: string
+          channel?: string
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          organization_id: string
+          sales_stage?: string
+          status?: string
+          summary?: string | null
+          temperature?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_state?: string
+          channel?: string
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          organization_id?: string
+          sales_stage?: string
+          status?: string
+          summary?: string | null
+          temperature?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_memories: {
+        Row: {
+          contact_id: string
+          conversation_summary: string | null
+          created_at: string
+          id: string
+          last_interaction_at: string | null
+          name: string | null
+          objections: string[]
+          organization_id: string
+          preferences: string[]
+          products_of_interest: Json
+          purchase_history: Json
+          sales_stage: string
+          temperature: string
+          updated_at: string
+          voluntarily_provided: Json
+        }
+        Insert: {
+          contact_id: string
+          conversation_summary?: string | null
+          created_at?: string
+          id?: string
+          last_interaction_at?: string | null
+          name?: string | null
+          objections?: string[]
+          organization_id: string
+          preferences?: string[]
+          products_of_interest?: Json
+          purchase_history?: Json
+          sales_stage?: string
+          temperature?: string
+          updated_at?: string
+          voluntarily_provided?: Json
+        }
+        Update: {
+          contact_id?: string
+          conversation_summary?: string | null
+          created_at?: string
+          id?: string
+          last_interaction_at?: string | null
+          name?: string | null
+          objections?: string[]
+          organization_id?: string
+          preferences?: string[]
+          products_of_interest?: Json
+          purchase_history?: Json
+          sales_stage?: string
+          temperature?: string
+          updated_at?: string
+          voluntarily_provided?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_memories_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_memories_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -318,6 +644,57 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "memberships_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          message_type: string
+          metadata: Json
+          organization_id: string
+          sender_type: string
+          status: string
+        }
+        Insert: {
+          content?: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          message_type?: string
+          metadata?: Json
+          organization_id: string
+          sender_type: string
+          status?: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          message_type?: string
+          metadata?: Json
+          organization_id?: string
+          sender_type?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -699,6 +1076,57 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      sales_stage_history: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          from_stage: string | null
+          from_temperature: string | null
+          id: string
+          organization_id: string
+          reason: string | null
+          to_stage: string
+          to_temperature: string | null
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          from_stage?: string | null
+          from_temperature?: string | null
+          id?: string
+          organization_id: string
+          reason?: string | null
+          to_stage: string
+          to_temperature?: string | null
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          from_stage?: string | null
+          from_temperature?: string | null
+          id?: string
+          organization_id?: string
+          reason?: string | null
+          to_stage?: string
+          to_temperature?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_stage_history_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_stage_history_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tags: {
         Row: {

@@ -23,12 +23,15 @@ function Page() {
         supabase.from("pipeline_stages").select("id,name").eq("organization_id", org.id).order("position"),
         supabase.from("contacts").select("id,name").eq("organization_id", org.id),
         supabase.from("products").select("id,name").eq("organization_id", org.id),
-        supabase.from("memberships").select("user_id, profile:profiles(email)").eq("organization_id", org.id),
+        supabase.from("memberships").select("user_id").eq("organization_id", org.id),
       ]);
+      const ids = (m.data ?? []).map((r) => r.user_id);
+      const pr = ids.length ? await supabase.from("profiles").select("id,email").in("id", ids) : { data: [] as { id: string; email: string | null }[] };
+      const emails = new Map((pr.data ?? []).map((x) => [x.id, x.email]));
       const o = (rows: { id: string; name: string }[] | null) => (rows ?? []).map((r) => ({ value: r.id, label: r.name }));
       return {
         stages: o(s.data), contacts: o(c.data), products: o(p.data),
-        members: (m.data ?? []).map((r) => ({ value: r.user_id, label: (r.profile as { email: string | null } | null)?.email ?? r.user_id })),
+        members: (m.data ?? []).map((r) => ({ value: r.user_id, label: emails.get(r.user_id) ?? r.user_id })),
       };
     },
   });
