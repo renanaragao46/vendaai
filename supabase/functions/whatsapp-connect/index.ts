@@ -10,7 +10,7 @@ export default {
       if (!organizationId) return Response.json({ error: "organization_id é obrigatório" }, { status: 400 });
 
       const { data: membership } = await ctx.supabase.from("memberships")
-        .select("role").eq("organization_id", organizationId).eq("user_id", ctx.userClaims?.sub ?? "").maybeSingle();
+        .select("role").eq("organization_id", organizationId).eq("user_id", ctx.userClaims?.id ?? "").maybeSingle();
       if (!membership || !["OWNER", "ADMIN"].includes(membership.role)) return Response.json({ error: "Acesso negado." }, { status: 403 });
 
       const token = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
