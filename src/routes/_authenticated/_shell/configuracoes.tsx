@@ -191,36 +191,6 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
     },
   });
 
-  const testConnection = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke("whatsapp-connect", { body: { organization_id: orgId } });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data;
-    },
-    onSuccess: (result: { pending_webhook_verification?: boolean; gateway?: { qr?: string | null; pairing_code?: string | null; status?: string } }) => {
-      if (result.gateway) setGatewayResult(result.gateway);
-      toast.success(
-        result?.pending_webhook_verification
-          ? "Configuração iniciada. Abra o QR Code do gateway e conecte o WhatsApp pelo celular."
-          : "WhatsApp validado e conectado",
-      );
-      void qc.invalidateQueries({ queryKey: ["whatsapp_account", orgId] });
-    },
-    onError: async (e: any) => {
-      let message = e?.message || "Não foi possível conectar o WhatsApp.";
-      try {
-        const response = e?.context;
-        if (response?.clone) {
-          const payload = await response.clone().json().catch(() => null);
-          if (payload?.error) message = String(payload.error);
-        }
-      } catch {
-        // Keep the original Supabase error when the response body cannot be read.
-      }
-      toast.error(message);
-    },
-  });
   const error = data?.status === "ERROR";
 
   return (
@@ -270,10 +240,6 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
           <Button onClick={() => connectQr.mutate()} disabled={!canAdmin(role) || connectQr.isPending}>
             <PlugZap className="mr-2 h-4 w-4" />
             {connectQr.isPending ? "Gerando QR Code…" : "Gerar QR Code e conectar"}
-          </Button>
-          <Button variant="outline" onClick={() => testConnection.mutate()} disabled={!canAdmin(role) || testConnection.isPending || (isWeb && !data?.phone_number_id && !data?.business_account_id)}>
-            <PlugZap className="mr-2 h-4 w-4" />
-            {testConnection.isPending ? "Conectando…" : "Testar conexão atual"}
           </Button>
         </div>
         {isWeb && gatewayResult?.qr && !connected && (
