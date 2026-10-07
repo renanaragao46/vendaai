@@ -13,7 +13,7 @@ export default {
         .from("memberships")
         .select("id,role")
         .eq("organization_id", organizationId)
-        .eq("user_id", ctx.userClaims?.sub ?? "")
+        .eq("user_id", ctx.userClaims?.id ?? "")
         .maybeSingle();
 
       if (error || !membership) return Response.json({ error: "Acesso negado à organização." }, { status: 403 });
@@ -27,7 +27,7 @@ export default {
         conversationId: body?.conversation_id ? String(body.conversation_id) : null,
         channel: "SIMULATOR",
         customerMessage,
-        actorUserId: ctx.userClaims?.sub ?? null,
+        actorUserId: ctx.userClaims?.id ?? null,
       });
 
       return Response.json(result);
