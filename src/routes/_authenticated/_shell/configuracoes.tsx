@@ -72,7 +72,7 @@ const statusLabel: Record<WhatsAppAccount["status"], string> = {
 
 function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof useOrg>["role"] }) {
   const qc = useQueryClient();
-  const [gatewayResult, setGatewayResult] = useState<{ qr?: string | null; pairing_code?: string | null; status?: string } | null>(null);
+  const [gatewayResult, setGatewayResult] = useState<{ qr?: string | null; pairing_code?: string | null; status?: string } | null>(null);\n  const [qrMode, setQrMode] = useState(false);
   const account = useQuery({
     queryKey: ["whatsapp_account", orgId],
     queryFn: async () => {
@@ -118,9 +118,57 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
 
   const data = account.data;
   const connected = data?.status === "CONNECTED";
-  const isWeb = data?.provider === "WHATSAPP_WEB";
+  const isWeb = qrMode || data?.provider === "WHATSAPP_WEB";
 
 
+
+  const connectQr = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        organization_id: orgId,
+        provider: "WHATSAPP_WEB",
+        status: "PENDING",
+        display_name: data?.display_name ?? null,
+        phone_number: data?.phone_number ?? null,
+        business_account_id: null,
+        phone_number_id: null,
+        gateway_instance_id: data?.gateway_instance_id ?? orgId,
+        gateway_status: "CONNECTING",
+        provider_config: { mode: "self_hosted_web" },
+      };
+      const { error: saveError } = await (supabase as any)
+        .from("whatsapp_accounts")
+        .upsert(payload, { onConflict: "organization_id" });
+      if (saveError) throw saveError;
+      const { data: result, error } = await supabase.functions.invoke("whatsapp-connect", {
+        body: { organization_id: orgId },
+      });
+      if (error) throw error;
+      if (result?.error) throw new Error(String(result.error));
+      return result;
+    },
+    onSuccess: (result: { gateway?: { qr?: string | null; pairing_code?: string | null; status?: string } }) => {
+      setQrMode(true);
+      if (result.gateway) setGatewayResult(result.gateway);
+      toast.success(result?.gateway?.qr ? "QR Code gerado. Escaneie com o WhatsApp." : "Conexão iniciada.");
+      void qc.invalidateQueries({ queryKey: ["whatsapp_account", orgId] });
+    },
+    onError: async (e: any) => {
+      setQrMode(true);
+      let message = e?.message || "Não foi possível iniciar a conexão por QR Code.";
+      try {
+        const response = e?.context;
+        if (response?.clone) {
+          const payload = await response.clone().json().catch(() => null);
+          if (payload?.error) message = String(payload.error);
+        }
+      } catch {
+        // Keep the original error.
+      }
+      toast.error(message);
+      void qc.invalidateQueries({ queryKey: ["whatsapp_account", orgId] });
+    },
+  });
 
   const testConnection = useMutation({
     mutationFn: async () => {
@@ -197,9 +245,16 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
           </div>
         </div>
 
-        <Button className="mt-4" variant="outline" onClick={() => testConnection.mutate()} disabled={!canAdmin(role) || testConnection.isPending || (!isWeb && (!data?.phone_number_id || !data?.business_account_id))}>
-          <PlugZap className="mr-2 h-4 w-4" />{testConnection.isPending ? "Conectando…" : isWeb ? "Gerar conexão WhatsApp" : "Testar e conectar WhatsApp"}
-        </Button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button onClick={() => connectQr.mutate()} disabled={!canAdmin(role) || connectQr.isPending}>
+            <PlugZap className="mr-2 h-4 w-4" />
+            {connectQr.isPending ? "Gerando QR Code…" : "Conectar por QR Code"}
+          </Button>
+          <Button variant="outline" onClick={() => testConnection.mutate()} disabled={!canAdmin(role) || testConnection.isPending || (isWeb && !data?.phone_number_id && !data?.business_account_id)}>
+            <PlugZap className="mr-2 h-4 w-4" />
+            {testConnection.isPending ? "Conectando…" : "Testar conexão atual"}
+          </Button>
+        </div>
         {isWeb && gatewayResult?.qr && !connected && (
           <div className="mt-4 rounded-lg border p-4">
             <p className="font-medium">Escaneie o QR Code no WhatsApp</p>
