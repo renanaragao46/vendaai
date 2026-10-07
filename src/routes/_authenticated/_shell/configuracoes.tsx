@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CheckCircle2, CircleAlert, MessageSquare, ShieldCheck, PlugZap } from "lucide-react";
@@ -71,6 +72,7 @@ const statusLabel: Record<WhatsAppAccount["status"], string> = {
 
 function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof useOrg>["role"] }) {
   const qc = useQueryClient();
+  const [gatewayResult, setGatewayResult] = useState<{ qr?: string | null; pairing_code?: string | null; status?: string } | null>(null);
   const account = useQuery({
     queryKey: ["whatsapp_account", orgId],
     queryFn: async () => {
@@ -124,7 +126,8 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
       if (data?.error) throw new Error(data.error);
       return data;
     },
-    onSuccess: (result: { pending_webhook_verification?: boolean }) => {
+    onSuccess: (result: { pending_webhook_verification?: boolean; gateway?: { qr?: string | null; pairing_code?: string | null; status?: string } }) => {
+      if (result.gateway) setGatewayResult(result.gateway);
       toast.success(
         result?.pending_webhook_verification
           ? "Configuração iniciada. Abra o QR Code do gateway e conecte o WhatsApp pelo celular."
@@ -182,6 +185,21 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
           <Button className="mt-4" variant="outline" onClick={() => testConnection.mutate()} disabled={!canAdmin(role) || testConnection.isPending || (isWeb ? !data?.phone_number : !data?.phone_number_id || !data?.business_account_id)}>
             <PlugZap className="mr-2 h-4 w-4" />{testConnection.isPending ? "Conectando…" : isWeb ? "Gerar conexão WhatsApp" : "Testar e conectar WhatsApp"}
           </Button>
+        {isWeb && gatewayResult?.qr && !connected && (
+          <div className="mt-4 rounded-lg border p-4">
+            <p className="font-medium">Escaneie o QR Code no WhatsApp</p>
+            <p className="mt-1 text-sm text-muted-foreground">No celular: WhatsApp → Dispositivos conectados → Conectar dispositivo.</p>
+            <img src={gatewayResult.qr} alt="QR Code para conectar o WhatsApp" className="mx-auto mt-4 h-64 w-64 rounded-md border bg-white p-2" />
+          </div>
+        )}
+        {isWeb && gatewayResult?.pairing_code && !connected && (
+          <div className="mt-4 rounded-lg border p-4 text-center">
+            <p className="font-medium">Código de conexão</p>
+            <p className="mt-2 text-2xl font-bold tracking-widest">{gatewayResult.pairing_code}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Use o recurso de conexão por código do WhatsApp, se disponível no aparelho.</p>
+          </div>
+        )}
+
         <div className="mt-4 flex items-start gap-3 rounded-lg bg-muted/50 p-4 text-xs text-muted-foreground">
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
           <p>{isWeb
