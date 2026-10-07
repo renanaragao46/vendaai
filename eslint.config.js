@@ -36,5 +36,11 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  {
+    files: ["supabase/functions/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
   eslintPluginPrettier,
 );
