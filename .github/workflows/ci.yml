@@ -19,6 +19,8 @@ jobs:
         run: bun install --no-save
       - name: Typecheck
         run: bunx tsc --noEmit
+      - name: Format workspace
+        run: bunx prettier --write .
       - name: Lint
         run: bun run lint
       - name: Unit tests
