@@ -27,16 +27,30 @@ const COMPANY_FIELDS: FieldDef[] = [
 ];
 
 const WHATSAPP_FIELDS: FieldDef[] = [
-  { name: "display_name", label: "Nome exibido no WhatsApp", type: "text" },
-  { name: "phone_number", label: "Número do WhatsApp", type: "text" },
-  { name: "business_account_id", label: "WhatsApp Business Account ID", type: "text" },
-  { name: "phone_number_id", label: "Phone Number ID", type: "text" },
+  {
+    name: "provider",
+    label: "Método de conexão",
+    type: "select",
+    required: true,
+    options: [
+      { value: "META_CLOUD_API", label: "Meta Cloud API — oficial" },
+      { value: "WHATSAPP_WEB", label: "WhatsApp Web — gateway próprio" },
+    ],
+    help: "A opção WhatsApp Web permite conectar números comuns ou Business por QR Code. Ela usa um gateway separado e pode ser desconectada pelo próprio WhatsApp.",
+    full: true,
+  },
+  { name: "display_name", label: "Nome exibido", type: "text" },
+  { name: "phone_number", label: "Número do WhatsApp", type: "text", help: "Pode ser um número de WhatsApp comum ou Business quando você usar o gateway próprio." },
+  { name: "business_account_id", label: "WhatsApp Business Account ID", type: "text", help: "Usado somente na integração oficial da Meta." },
+  { name: "phone_number_id", label: "Phone Number ID", type: "text", help: "Usado somente na integração oficial da Meta." },
 ];
 
 type WhatsAppAccount = {
   id: string;
   organization_id: string;
-  provider: string;
+  provider: "META_CLOUD_API" | "WHATSAPP_WEB";
+  gateway_instance_id: string | null;
+  gateway_status: string | null;
   status: "NOT_CONNECTED" | "PENDING" | "CONNECTED" | "ERROR" | "DISCONNECTED";
   display_name: string | null;
   phone_number: string | null;
@@ -72,15 +86,23 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
 
   const save = useMutation({
     mutationFn: async (values: Record<string, unknown>) => {
-      const hasIdentifiers = Boolean(values.business_account_id || values.phone_number_id || values.phone_number);
+      const provider = values.provider === "WHATSAPP_WEB" ? "WHATSAPP_WEB" : "META_CLOUD_API";
+      const hasIdentifiers = provider === "WHATSAPP_WEB"
+        ? Boolean(values.phone_number)
+        : Boolean(values.business_account_id || values.phone_number_id);
       const payload = {
         organization_id: orgId,
-        provider: "META_CLOUD_API",
-        status: account.data?.status === "CONNECTED" ? "CONNECTED" : hasIdentifiers ? "PENDING" : "NOT_CONNECTED",
+        provider,
+        status: account.data?.provider === provider && account.data?.status === "CONNECTED" ? "CONNECTED" : hasIdentifiers ? "PENDING" : "NOT_CONNECTED",
         display_name: values.display_name || null,
         phone_number: values.phone_number || null,
-        business_account_id: values.business_account_id || null,
-        phone_number_id: values.phone_number_id || null,
+        business_account_id: provider === "META_CLOUD_API" ? values.business_account_id || null : null,
+        phone_number_id: provider === "META_CLOUD_API" ? values.phone_number_id || null : null,
+        gateway_instance_id: provider === "WHATSAPP_WEB"
+          ? account.data?.gateway_instance_id ?? orgId
+          : null,
+        gateway_status: provider === "WHATSAPP_WEB" ? account.data?.gateway_status ?? "NOT_CONNECTED" : null,
+        provider_config: provider === "WHATSAPP_WEB" ? { mode: "self_hosted_web" } : {},
       };
       const { error } = await (supabase as any).from("whatsapp_accounts").upsert(payload, { onConflict: "organization_id" });
       if (error) throw error;
@@ -94,6 +116,7 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
 
   const data = account.data;
   const connected = data?.status === "CONNECTED";
+  const isWeb = data?.provider === "WHATSAPP_WEB";
   const testConnection = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke("whatsapp-connect", { body: { organization_id: orgId } });
@@ -104,7 +127,7 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
     onSuccess: (result: { pending_webhook_verification?: boolean }) => {
       toast.success(
         result?.pending_webhook_verification
-          ? "Meta validou a conta. Falta apenas o primeiro webhook chegar ao VendaAI."
+          ? "Configuração iniciada. Abra o QR Code do gateway e conecte o WhatsApp pelo celular."
           : "WhatsApp validado e conectado",
       );
       void qc.invalidateQueries({ queryKey: ["whatsapp_account", orgId] });
@@ -120,8 +143,12 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
           <div className="flex gap-3">
             <div className="rounded-lg border p-2"><MessageSquare className="h-5 w-5" /></div>
             <div>
-              <p className="font-semibold">WhatsApp Business Platform</p>
-              <p className="text-sm text-muted-foreground">Conexão oficial da Meta. O VendaAI não considera uma conta conectada até a verificação do webhook.</p>
+              <p className="font-semibold">Conexão de WhatsApp</p>
+              <p className="text-sm text-muted-foreground">
+                {isWeb
+                  ? "Conecte um WhatsApp comum ou Business pelo gateway próprio usando QR Code."
+                  : "Conexão oficial da Meta Cloud API, com validação do webhook antes de liberar o atendimento."}
+              </p>
             </div>
           </div>
           <Badge variant={connected ? "default" : error ? "destructive" : "secondary"}>
@@ -136,22 +163,30 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
               <p className="font-medium">{connected ? "WhatsApp validado" : "Configuração necessária"}</p>
               <p className="mt-1 text-muted-foreground">
                 {connected
-                  ? "A conta foi marcada como conectada após o recebimento e validação de um webhook assinado da Meta."
+                  ? isWeb
+                    ? "O gateway está conectado e o VendaAI pode receber e enviar mensagens por esta sessão."
+                    : "A conta foi marcada como conectada após o recebimento e validação de um webhook assinado da Meta."
                   : data?.status === "PENDING"
-                    ? "Os identificadores e a assinatura da WABA já foram validados pela Meta. Agora configure o webhook da Meta; quando o primeiro evento assinado chegar, o VendaAI concluirá a conexão automaticamente."
-                    : "Informe os identificadores da conta. Token, App Secret e outras credenciais nunca são armazenados nesta tela; ficarão nos Secrets do backend."}
+                    ? isWeb
+                      ? "O número foi preparado. Use o gateway WhatsApp Web para gerar o QR Code e vincular o celular."
+                      : "Os identificadores foram validados pela Meta. Agora configure o webhook da Meta; quando o primeiro evento assinado chegar, o VendaAI concluirá a conexão automaticamente."
+                    : isWeb
+                      ? "Informe o número. O QR Code será gerado pelo gateway e o WhatsApp poderá ser comum ou Business."
+                      : "Informe os identificadores da conta. Token, App Secret e outras credenciais nunca são armazenados nesta tela; ficarão nos Secrets do backend."}
               </p>
               {data?.last_error && <p className="mt-2 text-destructive">{data.last_error}</p>}
             </div>
           </div>
         </div>
 
-          <Button className="mt-4" variant="outline" onClick={() => testConnection.mutate()} disabled={!canAdmin(role) || testConnection.isPending || !data?.phone_number_id || !data?.business_account_id}>
-            <PlugZap className="mr-2 h-4 w-4" />{testConnection.isPending ? "Validando…" : "Testar e conectar WhatsApp"}
+          <Button className="mt-4" variant="outline" onClick={() => testConnection.mutate()} disabled={!canAdmin(role) || testConnection.isPending || (isWeb ? !data?.phone_number : !data?.phone_number_id || !data?.business_account_id)}>
+            <PlugZap className="mr-2 h-4 w-4" />{testConnection.isPending ? "Conectando…" : isWeb ? "Gerar conexão WhatsApp" : "Testar e conectar WhatsApp"}
           </Button>
         <div className="mt-4 flex items-start gap-3 rounded-lg bg-muted/50 p-4 text-xs text-muted-foreground">
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>Até que a integração oficial esteja configurada e validada, nenhuma mensagem real será enviada e nenhuma conexão será simulada.</p>
+          <p>{isWeb
+            ? "O modo WhatsApp Web usa uma sessão separada do aplicativo. O VendaAI não armazena QR Codes nem chaves da sessão no banco."
+            : "Até que a integração oficial esteja configurada e validada, nenhuma mensagem real será enviada e nenhuma conexão será simulada."}</p>
         </div>
       </Card>
 
