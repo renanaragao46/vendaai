@@ -158,6 +158,28 @@ const server = http.createServer(async (req, res) => {
       return json(res, 401, { error: "Unauthorized" });
     }
 
+    if (req.method === "GET" && action === "connect") {
+      const state = await connectInstance(id);
+      await waitForConnectionResult(state);
+      const safeQr = state.qr ? JSON.stringify(state.qr) : "null";
+      const safeStatus = JSON.stringify(state.status);
+      res.writeHead(200, {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store, no-cache, must-revalidate",
+        "access-control-allow-origin": "*",
+      });
+      return res.end(`<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VendaAI — Conectar WhatsApp</title>
+<style>body{font-family:system-ui,sans-serif;background:#f7f7f8;margin:0;padding:32px;text-align:center;color:#111}main{max-width:520px;margin:auto;background:#fff;border:1px solid #ddd;border-radius:16px;padding:28px;box-shadow:0 8px 30px #0001}img{width:320px;height:320px;object-fit:contain;border:1px solid #ddd;border-radius:12px;padding:10px;background:#fff}p{color:#666}.ok{font-size:20px;font-weight:700}</style>
+</head><body><main><h1>Conectar WhatsApp</h1><div id="app"></div></main>
+<script>
+const initial={qr:${safeQr},status:${safeStatus}};
+const render=s=>{document.getElementById('app').innerHTML=s.status==='CONNECTED'?'<p class="ok">WhatsApp conectado com sucesso.</p>':s.qr?'<p>Escaneie este QR Code no WhatsApp:<br>Dispositivos conectados → Conectar dispositivo.</p><img src="'+s.qr+'" alt="QR Code">':'<p>Aguardando QR Code…</p>'};
+render(initial);
+setInterval(async()=>{try{const r=await fetch(location.pathname.replace('/connect','/status'),{cache:'no-store'});render(await r.json())}catch(e){}},2000);
+</script></body></html>`);
+    }
     if (req.method === "POST" && action === "connect") {
       const state = await connectInstance(id);
       // Baileys emits the first QR asynchronously. Wait briefly so the
