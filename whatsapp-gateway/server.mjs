@@ -116,6 +116,14 @@ async function connectInstance(id) {
   return state;
 }
 
+async function waitForConnectionResult(state, timeoutMs = 15000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (state.qr || state.status === "CONNECTED" || state.status === "DISCONNECTED") return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
 function publicState(state) {
   return {
     status: state.status,
@@ -140,6 +148,9 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && action === "connect") {
       const state = await connectInstance(id);
+      // Baileys emits the first QR asynchronously. Wait briefly so the
+      // connect response can carry the QR directly to the VendaAI UI.
+      await waitForConnectionResult(state);
       return json(res, 200, publicState(state));
     }
     if (req.method === "GET" && action === "status") {
