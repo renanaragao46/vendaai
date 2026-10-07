@@ -199,24 +199,33 @@ export default {
     if (req.method !== "POST") return Response.json({ error: "Method not allowed" }, { status: 405 });
 
     const bodyText = await req.text();
-    if (!(await verifySignature(bodyText, req.headers.get("x-hub-signature-256") ?? ""))) {
+
+    const gatewaySecret = Deno.env.get("WHATSAPP_WEB_GATEWAY_SECRET");
+    const isGatewayRequest = Boolean(gatewaySecret) && req.headers.get("x-vendaai-gateway-secret") === gatewaySecret;
+
+    if (!isGatewayRequest && !(await verifySignature(bodyText, req.headers.get("x-hub-signature-256") ?? ""))) {
       return Response.json({ error: "Invalid signature" }, { status: 401 });
     }
 
     let body: any;
-    try { body = JSON.parse(bodyText); } catch { return Response.json({ error: "Invalid JSON" }, { status: 400 }); }
-    if (body?.object !== "whatsapp_business_account") return Response.json({ received: true });
+    try {
+      body = JSON.parse(bodyText);
+    } catch {
+      return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    }
 
-    const gatewaySecret = Deno.env.get("WHATSAPP_WEB_GATEWAY_SECRET");
-    const isGatewayRequest = Boolean(gatewaySecret) && req.headers.get("x-vendaai-gateway-secret") === gatewaySecret;
-    if (!isGatewayRequest && !(await verifySignature(bodyText, req.headers.get("x-hub-signature-256") ?? ""))) {
-      return Response.json({ error: "Invalid signature" }, { status: 401 });
+    if (isGatewayRequest) {
+      if (body?.object !== "whatsapp_web" || !body?.instance_id) {
+        return Response.json({ error: "Invalid gateway payload" }, { status: 400 });
+      }
+    } else if (body?.object !== "whatsapp_business_account") {
+      return Response.json({ received: true });
     }
-    if (isGatewayRequest && body?.object !== "whatsapp_web") {
-      return Response.json({ error: "Invalid gateway payload" }, { status: 400 });
-    }
+
     const token = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
-    if (!isGatewayRequest && !token) return Response.json({ error: "WHATSAPP_ACCESS_TOKEN not configured" }, { status: 503 });
+    if (!isGatewayRequest && !token) {
+      return Response.json({ error: "WHATSAPP_ACCESS_TOKEN not configured" }, { status: 503 });
+    }
 
     const webhookEntries = isGatewayRequest
       ? [{
@@ -239,11 +248,13 @@ export default {
         if (change?.field !== "messages") continue;
         const value = change.value ?? {};
         const phoneNumberId = String(value?.metadata?.phone_number_id ?? "");
-        if (!phoneNumberId) continue;
+        if (!isGatewayRequest && !phoneNumberId) continue;
 
-        const { data: account, error } = await ctx.supabaseAdmin.from("whatsapp_accounts")
-           .select("organization_id,status,provider,phone_number_id,business_account_id,gateway_instance_id")
-          .eq("phone_number_id", phoneNumberId)
+        const accountQuery = ctx.supabaseAdmin.from("whatsapp_accounts")
+          .select("organization_id,status,provider,phone_number_id,business_account_id,gateway_instance_id");
+        const { data: account, error } = await (isGatewayRequest
+          ? accountQuery.eq("gateway_instance_id", String(body?.instance_id ?? "")).eq("provider", "WHATSAPP_WEB")
+          : accountQuery.eq("phone_number_id", phoneNumberId))
           .maybeSingle();
         if (error) throw error;
         if (!account || !["CONNECTED", "PENDING"].includes(account.status)) continue;
