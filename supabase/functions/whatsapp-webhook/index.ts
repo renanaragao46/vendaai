@@ -265,7 +265,7 @@ export default {
         // A valid Meta-signed POST reaching this phone-number endpoint proves
         // that the webhook is configured and delivering events end-to-end.
         // This is stronger than merely validating the Graph API credentials.
-        const { error: webhookVerifiedError } = await ctx.supabaseAdmin
+        const verifiedQuery = ctx.supabaseAdmin
           .from("whatsapp_accounts")
           .update({
             status: "CONNECTED",
@@ -273,8 +273,10 @@ export default {
             connected_at: account.status === "CONNECTED" ? undefined : new Date().toISOString(),
             last_error: null,
           })
-          .eq("organization_id", account.organization_id)
-          .eq("phone_number_id", phoneNumberId);
+          .eq("organization_id", account.organization_id);
+        const { error: webhookVerifiedError } = await (isGatewayRequest
+          ? verifiedQuery.eq("gateway_instance_id", String(body?.instance_id ?? ""))
+          : verifiedQuery.eq("phone_number_id", phoneNumberId));
         if (webhookVerifiedError) throw webhookVerifiedError;
 
         for (const message of value?.messages ?? []) {
