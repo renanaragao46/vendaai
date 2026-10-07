@@ -145,6 +145,14 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.method === "OPTIONS") return json(res, 204, {});
     if (req.url === "/health" && req.method === "GET") return json(res, 200, { ok: true, service: "vendaai-whatsapp-gateway" });
+    // Friendly browser route: /connect?instance=<id> avoids any proxy/browser
+    // ambiguity around the API path while still reusing the same QR handler.
+    if (req.method === "GET" && req.url?.startsWith("/connect")) {
+      const direct = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+      const instance = direct.searchParams.get("instance");
+      if (!instance) return json(res, 400, { error: "instance is required" });
+      req.url = `/v1/instances/${encodeURIComponent(instance)}/connect`;
+    }
     const match = req.url?.match(/^\/v1\/instances\/([^/]+)(?:\/(connect|status|messages|disconnect))?$/);
     if (!match) return json(res, 404, { error: "Not found" });
     const id = decodeURIComponent(match[1]);
