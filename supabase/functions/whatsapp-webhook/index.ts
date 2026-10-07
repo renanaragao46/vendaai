@@ -2,6 +2,31 @@ import { withSupabase } from "npm:@supabase/server@^1";
 import { runSalesEngine } from "../_shared/ai-sales-engine/engine.ts";
 import { sendText, transcribe, verifySignature } from "./meta.ts";
 
+async function sendWhatsAppText(account: any, to: string, text: string) {
+  if (account.provider === "WHATSAPP_WEB") {
+    const gatewayUrl = Deno.env.get("WHATSAPP_WEB_GATEWAY_URL");
+    const gatewayToken = Deno.env.get("WHATSAPP_WEB_GATEWAY_TOKEN");
+    if (!gatewayUrl || !gatewayToken || !account.gateway_instance_id) {
+      throw new Error("Gateway WhatsApp Web não configurado.");
+    }
+    const response = await fetch(
+      `${gatewayUrl.replace(/\\/$/, "")}/v1/instances/${encodeURIComponent(account.gateway_instance_id)}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${gatewayToken}`,
+        },
+        body: JSON.stringify({ to, text }),
+      },
+    );
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload?.error ?? `Gateway error ${response.status}`);
+    return payload;
+  }
+  return sendText(account.phone_number_id, to, text, Deno.env.get("WHATSAPP_ACCESS_TOKEN")!);
+}
+
 async function handleMessage(db: any, message: any, contacts: any[], account: any, token: string) {
   const phone = String(message?.from ?? "");
   if (!phone || !message?.id) return { ignored: true };
@@ -124,7 +149,7 @@ async function handleMessage(db: any, message: any, contacts: any[], account: an
       };
     }
 
-    const outbound = await sendText(account.phone_number_id, phone, result.response, token);
+    const outbound = await sendWhatsAppText(account, phone, result.response);
     const { data: currentAiMessage, error: currentAiMessageError } = await db.from("messages")
       .select("metadata")
       .eq("id", result.ai_message_id)
@@ -182,12 +207,34 @@ export default {
     try { body = JSON.parse(bodyText); } catch { return Response.json({ error: "Invalid JSON" }, { status: 400 }); }
     if (body?.object !== "whatsapp_business_account") return Response.json({ received: true });
 
+    const gatewaySecret = Deno.env.get("WHATSAPP_WEB_GATEWAY_SECRET");
+    const isGatewayRequest = Boolean(gatewaySecret) && req.headers.get("x-vendaai-gateway-secret") === gatewaySecret;
+    if (!isGatewayRequest && !(await verifySignature(bodyText, req.headers.get("x-hub-signature-256") ?? ""))) {
+      return Response.json({ error: "Invalid signature" }, { status: 401 });
+    }
+    if (isGatewayRequest && body?.object !== "whatsapp_web") {
+      return Response.json({ error: "Invalid gateway payload" }, { status: 400 });
+    }
     const token = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
-    if (!token) return Response.json({ error: "WHATSAPP_ACCESS_TOKEN not configured" }, { status: 503 });
+    if (!isGatewayRequest && !token) return Response.json({ error: "WHATSAPP_ACCESS_TOKEN not configured" }, { status: 503 });
+
+    const webhookEntries = isGatewayRequest
+      ? [{
+          id: "",
+          changes: [{
+            field: "messages",
+            value: {
+              metadata: { phone_number_id: null },
+              contacts: body?.contacts ?? [],
+              messages: body?.messages ?? [],
+            },
+          }],
+        }]
+      : (body?.entry ?? []);
 
     let processed = 0;
     let errors = 0;
-    for (const entry of body?.entry ?? []) {
+    for (const entry of webhookEntries) {
       for (const change of entry?.changes ?? []) {
         if (change?.field !== "messages") continue;
         const value = change.value ?? {};
@@ -195,14 +242,14 @@ export default {
         if (!phoneNumberId) continue;
 
         const { data: account, error } = await ctx.supabaseAdmin.from("whatsapp_accounts")
-          .select("organization_id,status,phone_number_id,business_account_id")
+           .select("organization_id,status,provider,phone_number_id,business_account_id,gateway_instance_id")
           .eq("phone_number_id", phoneNumberId)
           .maybeSingle();
         if (error) throw error;
         if (!account || !["CONNECTED", "PENDING"].includes(account.status)) continue;
 
         const entryWabaId = String(entry?.id ?? "");
-        if (entryWabaId && entryWabaId !== String(account.business_account_id ?? "")) continue;
+        if (!isGatewayRequest && entryWabaId && entryWabaId !== String(account.business_account_id ?? "")) continue;
 
         // A valid Meta-signed POST reaching this phone-number endpoint proves
         // that the webhook is configured and delivering events end-to-end.
@@ -220,11 +267,11 @@ export default {
         if (webhookVerifiedError) throw webhookVerifiedError;
 
         for (const message of value?.messages ?? []) {
-          const eventKey = `message:${message.id}`;
+          const eventKey = `${isGatewayRequest ? "web" : "message"}:${message.id}`;
           let event: any = null;
           const { data: createdEvent, error: eventError } = await ctx.supabaseAdmin.from("webhook_events").insert({
             organization_id: account.organization_id,
-            provider: "META_CLOUD_API",
+            provider: isGatewayRequest ? "WHATSAPP_WEB" : "META_CLOUD_API",
             event_key: eventKey,
             event_type: message.type ?? "message",
             payload: message,
@@ -234,7 +281,7 @@ export default {
           if (eventError?.code === "23505") {
             const { data: existingEvent, error: existingEventError } = await ctx.supabaseAdmin.from("webhook_events")
               .select("id,status,received_at")
-              .eq("provider", "META_CLOUD_API")
+              .eq("provider", isGatewayRequest ? "WHATSAPP_WEB" : "META_CLOUD_API")
               .eq("event_key", eventKey)
               .maybeSingle();
             if (existingEventError) throw existingEventError;
