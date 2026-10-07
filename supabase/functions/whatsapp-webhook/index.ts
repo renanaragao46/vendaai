@@ -199,7 +199,25 @@ export default {
           .eq("phone_number_id", phoneNumberId)
           .maybeSingle();
         if (error) throw error;
-        if (!account || account.status !== "CONNECTED") continue;
+        if (!account || !["CONNECTED", "PENDING"].includes(account.status)) continue;
+
+        const entryWabaId = String(entry?.id ?? "");
+        if (entryWabaId && entryWabaId !== String(account.business_account_id ?? "")) continue;
+
+        // A valid Meta-signed POST reaching this phone-number endpoint proves
+        // that the webhook is configured and delivering events end-to-end.
+        // This is stronger than merely validating the Graph API credentials.
+        const { error: webhookVerifiedError } = await ctx.supabaseAdmin
+          .from("whatsapp_accounts")
+          .update({
+            status: "CONNECTED",
+            webhook_verified_at: new Date().toISOString(),
+            connected_at: account.status === "CONNECTED" ? undefined : new Date().toISOString(),
+            last_error: null,
+          })
+          .eq("organization_id", account.organization_id)
+          .eq("phone_number_id", phoneNumberId);
+        if (webhookVerifiedError) throw webhookVerifiedError;
 
         for (const message of value?.messages ?? []) {
           const eventKey = `message:${message.id}`;
