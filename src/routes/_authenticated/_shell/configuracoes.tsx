@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CheckCircle2, CircleAlert, MessageSquare, ShieldCheck, PlugZap } from "lucide-react";
@@ -120,40 +120,7 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
   const connected = data?.status === "CONNECTED";
   const isWeb = data?.provider === "WHATSAPP_WEB";
 
-  useEffect(() => {
-    if (!isWeb || !data?.gateway_instance_id || connected) return;
-    let stopped = false;
-    const poll = async () => {
-      try {
-        const gatewayUrl = import.meta.env.VITE_WHATSAPP_GATEWAY_PUBLIC_URL as string | undefined;
-        if (!gatewayUrl) return;
-        const response = await fetch(`${gatewayUrl.replace(/\/$/, "")}/v1/instances/${encodeURIComponent(data.gateway_instance_id)}/status`);
-        if (!response.ok) return;
-        const result = await response.json();
-        if (stopped) return;
-        if (result?.qr || result?.pairing_code || result?.status === "CONNECTED") {
-          setGatewayResult({
-            qr: result?.qr ?? null,
-            pairing_code: result?.pairing_code ?? null,
-            status: result?.status,
-          });
-        }
-        if (result?.status === "CONNECTED") {
-          void qc.invalidateQueries({ queryKey: ["whatsapp_account", orgId] });
-        }
-      } catch {
-        // The browser must not expose the private gateway token; polling is best-effort.
-      }
-    };
-    void poll();
-    const timer = window.setInterval(poll, 1500);
-    const stop = window.setTimeout(() => window.clearInterval(timer), 30000);
-    return () => {
-      stopped = true;
-      window.clearInterval(timer);
-      window.clearTimeout(stop);
-    };
-  }, [isWeb, data?.gateway_instance_id, connected, orgId, qc]);
+
 
   const testConnection = useMutation({
     mutationFn: async () => {
