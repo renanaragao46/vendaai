@@ -6,7 +6,7 @@
   "scripts": { "start": "node server.mjs", "check": "node --check server.mjs" },
   "dependencies": {
     "@hapi/boom": "^10.0.1",
-    "@whiskeysockets/baileys": "github:WhiskeySockets/Baileys",
+    "@whiskeysockets/baileys": "git+https://github.com/WhiskeySockets/Baileys.git",
     "pino": "^9.9.0",
     "qrcode": "^1.5.4"
   }
