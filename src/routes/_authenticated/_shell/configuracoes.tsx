@@ -144,12 +144,29 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
         .from("whatsapp_accounts")
         .upsert(payload, { onConflict: "organization_id" });
       if (saveError) throw saveError;
-      const { data: result, error } = await supabase.functions.invoke("whatsapp-connect", {
-        body: { organization_id: orgId },
-      });
-      if (error) throw error;
-      if (result?.error) throw new Error(String(result.error));
-      return result;
+      const gatewayUrl = String(import.meta.env.VITE_WHATSAPP_GATEWAY_PUBLIC_URL ?? "https://vendaai-whatsapp-gateway.onrender.com").replace(/\\/$/, "");
+      const response = await fetch(
+        `${gatewayUrl}/v1/instances/${encodeURIComponent(data?.gateway_instance_id ?? orgId)}/connect`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone_number: data?.phone_number ?? null,
+            organization_id: orgId,
+          }),
+        },
+      );
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(String(result?.error ?? `Gateway error ${response.status}`));
+      return {
+        connected: Boolean(result?.connected),
+        gateway: {
+          instance_id: data?.gateway_instance_id ?? orgId,
+          status: result?.status ?? "CONNECTING",
+          qr: result?.qr ?? null,
+          pairing_code: result?.pairing_code ?? null,
+        },
+      };
     },
     onSuccess: (result: { gateway?: { qr?: string | null; pairing_code?: string | null; status?: string } }) => {
       setQrMode(true);
