@@ -48,13 +48,13 @@ export default {
       }
 
       if (account.provider === "WHATSAPP_WEB") {
-        const gatewayUrl = Deno.env.get("WHATSAPP_WEB_GATEWAY_URL");
-        const gatewayToken = Deno.env.get("WHATSAPP_WEB_GATEWAY_TOKEN");
-        if (!gatewayUrl || !gatewayToken) {
+        const gatewayUrl = Deno.env.get("WHATSAPP_WEB_GATEWAY_URL") ?? "https://vendaai-whatsapp-gateway.onrender.com";
+        if (!gatewayUrl) {
           return Response.json({
-            error: "O gateway WhatsApp Web não está configurado nos Secrets do backend.",
+            error: "O gateway WhatsApp Web não está configurado.",
           }, { status: 503 });
         }
+        const gatewayToken = Deno.env.get("WHATSAPP_WEB_GATEWAY_TOKEN") ?? "";
 
         const instanceId = String(account.gateway_instance_id || organizationId);
         const response = await fetch(
@@ -63,7 +63,7 @@ export default {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${gatewayToken}`,
+              ...(gatewayToken ? { Authorization: `Bearer ${gatewayToken}` } : {}),
             },
             body: JSON.stringify({
               phone_number: account.phone_number ?? null,
