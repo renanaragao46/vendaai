@@ -36,11 +36,6 @@ export default {
         return Response.json({ error: "Acesso negado." }, { status: 403 });
       }
 
-      const token = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
-      if (!token) {
-        return Response.json({ error: "WHATSAPP_ACCESS_TOKEN não configurado nos Secrets do backend." }, { status: 503 });
-      }
-
       const { data: account, error: accountError } = await ctx.supabase
         .from("whatsapp_accounts")
         .select("*")
@@ -48,6 +43,68 @@ export default {
         .maybeSingle();
 
       if (accountError) throw accountError;
+      if (!account) {
+        return Response.json({ error: "Configure primeiro a conexão do WhatsApp." }, { status: 400 });
+      }
+
+      if (account.provider === "WHATSAPP_WEB") {
+        const gatewayUrl = Deno.env.get("WHATSAPP_WEB_GATEWAY_URL");
+        const gatewayToken = Deno.env.get("WHATSAPP_WEB_GATEWAY_TOKEN");
+        if (!gatewayUrl || !gatewayToken) {
+          return Response.json({
+            error: "O gateway WhatsApp Web não está configurado nos Secrets do backend.",
+          }, { status: 503 });
+        }
+
+        const instanceId = String(account.gateway_instance_id || organizationId);
+        const response = await fetch(
+          `${gatewayUrl.replace(/\\/$/, "")}/v1/instances/${encodeURIComponent(instanceId)}/connect`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${gatewayToken}`,
+            },
+            body: JSON.stringify({
+              phone_number: account.phone_number ?? null,
+              organization_id: organizationId,
+            }),
+          },
+        );
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload?.error ?? `Gateway error ${response.status}`);
+
+        const { error: updateError } = await ctx.supabase
+          .from("whatsapp_accounts")
+          .update({
+            provider: "WHATSAPP_WEB",
+            status: payload?.connected ? "CONNECTED" : "PENDING",
+            gateway_instance_id: instanceId,
+            gateway_status: payload?.status ?? "CONNECTING",
+            display_name: payload?.display_name ?? account.display_name,
+            phone_number: payload?.phone_number ?? account.phone_number,
+            last_error: null,
+          })
+          .eq("organization_id", organizationId);
+        if (updateError) throw updateError;
+
+        return Response.json({
+          connected: Boolean(payload?.connected),
+          pending_webhook_verification: !payload?.connected,
+          gateway: {
+            instance_id: instanceId,
+            status: payload?.status ?? "CONNECTING",
+            qr: payload?.qr ?? null,
+            pairing_code: payload?.pairing_code ?? null,
+          },
+        });
+      }
+
+      const token = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
+      if (!token) {
+        return Response.json({ error: "WHATSAPP_ACCESS_TOKEN não configurado nos Secrets do backend." }, { status: 503 });
+      }
+
       if (!account?.business_account_id || !account?.phone_number_id) {
         return Response.json({
           error: "Informe o WhatsApp Business Account ID e o Phone Number ID antes de testar.",
