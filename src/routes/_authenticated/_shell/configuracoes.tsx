@@ -62,17 +62,21 @@ type WhatsAppAccount = {
   last_error: string | null;
 };
 
-const statusLabel: Record<WhatsAppAccount["status"], string> = {
-  NOT_CONNECTED: "Não conectado",
-  PENDING: "API validada • aguardando webhook",
-  CONNECTED: "Conectado",
-  ERROR: "Erro",
-  DISCONNECTED: "Desconectado",
+const statusLabel = (status: WhatsAppAccount["status"], provider?: WhatsAppAccount["provider"]) => {
+  if (status === "PENDING" && provider === "WHATSAPP_WEB") return "Aguardando QR Code";
+  if (status === "PENDING") return "API validada • aguardando webhook";
+  return ({
+    NOT_CONNECTED: "Não conectado",
+    CONNECTED: "Conectado",
+    ERROR: "Erro",
+    DISCONNECTED: "Desconectado",
+  } as const)[status];
 };
 
 function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof useOrg>["role"] }) {
   const qc = useQueryClient();
-  const [gatewayResult, setGatewayResult] = useState<{ qr?: string | null; pairing_code?: string | null; status?: string } | null>(null);\n  const [qrMode, setQrMode] = useState(false);
+  const [gatewayResult, setGatewayResult] = useState<{ qr?: string | null; pairing_code?: string | null; status?: string } | null>(null);
+  const [qrMode, setQrMode] = useState(false);
   const account = useQuery({
     queryKey: ["whatsapp_account", orgId],
     queryFn: async () => {
@@ -218,7 +222,7 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
             </div>
           </div>
           <Badge variant={connected ? "default" : error ? "destructive" : "secondary"}>
-            {statusLabel[data?.status ?? "NOT_CONNECTED"]}
+            {statusLabel(data?.status ?? "NOT_CONNECTED", data?.provider)}
           </Badge>
         </div>
 
@@ -248,7 +252,7 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
         <div className="mt-4 flex flex-wrap gap-2">
           <Button onClick={() => connectQr.mutate()} disabled={!canAdmin(role) || connectQr.isPending}>
             <PlugZap className="mr-2 h-4 w-4" />
-            {connectQr.isPending ? "Gerando QR Code…" : "Conectar por QR Code"}
+            {connectQr.isPending ? "Gerando QR Code…" : "Gerar QR Code e conectar"}
           </Button>
           <Button variant="outline" onClick={() => testConnection.mutate()} disabled={!canAdmin(role) || testConnection.isPending || (isWeb && !data?.phone_number_id && !data?.business_account_id)}>
             <PlugZap className="mr-2 h-4 w-4" />
