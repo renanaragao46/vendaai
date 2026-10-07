@@ -153,6 +153,7 @@ const server = http.createServer(async (req, res) => {
       if (!instance) return json(res, 400, { error: "instance is required" });
       req.url = `/v1/instances/${encodeURIComponent(instance)}/connect`;
     }
+    if (req.method === "GET" && req.url?.startsWith("/qr?instance=")) { const u = new URL(req.url, "http://localhost"); const id = u.searchParams.get("instance"); if (!id) return json(res, 400, { error: "instance is required" }); return json(res, 200, { ok: true, instance: id }); }
     const match = req.url?.match(/^\/v1\/instances\/([^/]+)(?:\/(connect|status|messages|disconnect))?$/);
     if (!match) return json(res, 404, { error: "Not found" });
     const id = decodeURIComponent(match[1]);
