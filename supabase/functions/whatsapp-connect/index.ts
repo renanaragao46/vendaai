@@ -58,7 +58,7 @@ export default {
 
         const instanceId = String(account.gateway_instance_id || organizationId);
         const response = await fetch(
-          `${gatewayUrl.replace(/\\/$/, "")}/v1/instances/${encodeURIComponent(instanceId)}/connect`,
+          `${gatewayUrl.replace(/\/$/, "")}/v1/instances/${encodeURIComponent(instanceId)}/connect`,
           {
             method: "POST",
             headers: {
