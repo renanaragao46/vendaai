@@ -85,6 +85,7 @@ export function AppShell() {
                     <SidebarMenuButton asChild tooltip={item.label}>
                       <Link
                         to={item.to}
+                        preload="intent"
                         activeProps={{ "data-active": true } as Record<string, unknown>}
                       >
                         <item.icon />
@@ -130,7 +131,7 @@ export function AppShell() {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link to="/configuracoes">Configurações</Link>
+                <Link to="/configuracoes" preload="intent">Configurações</Link>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={signOut}>Sair</DropdownMenuItem>
             </DropdownMenuContent>
