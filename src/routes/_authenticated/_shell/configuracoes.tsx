@@ -123,7 +123,7 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
 
 
 
-  const directQrUrl = `https://vendaai-whatsapp-gateway.onrender.com/connect?instance=${encodeURIComponent(data?.gateway_instance_id ?? orgId)}`;
+  const directQrUrl = `https://vendaai-whatsapp-gateway.onrender.com/qr?instance=${encodeURIComponent(data?.gateway_instance_id ?? orgId)}`;
 
 
   const error = data?.status === "ERROR";
