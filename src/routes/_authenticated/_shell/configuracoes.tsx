@@ -138,7 +138,19 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
       );
       void qc.invalidateQueries({ queryKey: ["whatsapp_account", orgId] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: async (e: any) => {
+      let message = e?.message || "Não foi possível conectar o WhatsApp.";
+      try {
+        const response = e?.context;
+        if (response?.clone) {
+          const payload = await response.clone().json().catch(() => null);
+          if (payload?.error) message = String(payload.error);
+        }
+      } catch {
+        // Keep the original Supabase error when the response body cannot be read.
+      }
+      toast.error(message);
+    },
   });
   const error = data?.status === "ERROR";
 
