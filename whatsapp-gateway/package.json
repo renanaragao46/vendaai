@@ -2,11 +2,16 @@
   "name": "vendaai-whatsapp-gateway",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24" },
-  "scripts": { "start": "node server.mjs", "check": "node --check server.mjs" },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "check": "node --check server.mjs"
+  },
   "dependencies": {
     "@hapi/boom": "^10.0.1",
-    "@whiskeysockets/baileys": "git+https://github.com/WhiskeySockets/Baileys.git",
+    "@whiskeysockets/baileys": "7.0.0-rc14",
     "pino": "^9.9.0",
     "qrcode": "^1.5.4"
   }
