@@ -14,7 +14,12 @@ const logger = pino({ level: process.env.LOG_LEVEL || "info" });
 const instances = new Map();
 
 function json(res, status, body) {
-  res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
+  res.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-allow-headers": "content-type, authorization",
+  });
   res.end(JSON.stringify(body));
 }
 async function body(req) {
@@ -138,6 +143,7 @@ await mkdir(join(DATA_DIR, "instances"), { recursive: true });
 
 const server = http.createServer(async (req, res) => {
   try {
+    if (req.method === "OPTIONS") return json(res, 204, {});
     if (req.url === "/health" && req.method === "GET") return json(res, 200, { ok: true, service: "vendaai-whatsapp-gateway" });
     const match = req.url?.match(/^\/v1\/instances\/([^/]+)(?:\/(connect|status|messages|disconnect))?$/);
     if (!match) return json(res, 404, { error: "Not found" });
