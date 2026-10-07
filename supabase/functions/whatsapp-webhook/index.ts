@@ -73,7 +73,9 @@ async function handleMessage(db: any, message: any, contacts: any[], account: an
   if (message.type === "text") text = String(message?.text?.body ?? "").trim();
   else if (message.type === "audio" && message?.audio?.id) {
     type = "AUDIO";
-    text = "[AUDIO] " + await transcribe(String(message.audio.id), token);
+    text = account.provider === "WHATSAPP_WEB"
+      ? "[AUDIO_RECEBIDO] O cliente enviou um áudio."
+      : "[AUDIO] " + await transcribe(String(message.audio.id), token);
   } else if (message.type === "image") {
     type = "IMAGE";
     text = "[IMAGEM_RECEBIDA] O cliente enviou uma imagem.";
