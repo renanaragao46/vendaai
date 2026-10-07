@@ -651,6 +651,57 @@ export type Database = {
           },
         ]
       }
+      message_attachments: {
+        Row: {
+          created_at: string
+          external_media_id: string | null
+          file_name: string | null
+          file_size: number | null
+          id: string
+          message_id: string
+          mime_type: string | null
+          organization_id: string
+          storage_path: string | null
+        }
+        Insert: {
+          created_at?: string
+          external_media_id?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          message_id: string
+          mime_type?: string | null
+          organization_id: string
+          storage_path?: string | null
+        }
+        Update: {
+          created_at?: string
+          external_media_id?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          message_id?: string
+          mime_type?: string | null
+          organization_id?: string
+          storage_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_attachments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -1158,6 +1209,109 @@ export type Database = {
             foreignKeyName: "tags_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhook_events: {
+        Row: {
+          error: string | null
+          event_key: string
+          event_type: string | null
+          id: string
+          organization_id: string | null
+          payload: Json
+          processed_at: string | null
+          provider: string
+          received_at: string
+          status: string
+        }
+        Insert: {
+          error?: string | null
+          event_key: string
+          event_type?: string | null
+          id?: string
+          organization_id?: string | null
+          payload?: Json
+          processed_at?: string | null
+          provider?: string
+          received_at?: string
+          status?: string
+        }
+        Update: {
+          error?: string | null
+          event_key?: string
+          event_type?: string | null
+          id?: string
+          organization_id?: string | null
+          payload?: Json
+          processed_at?: string | null
+          provider?: string
+          received_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_accounts: {
+        Row: {
+          business_account_id: string | null
+          connected_at: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          last_error: string | null
+          organization_id: string
+          phone_number: string | null
+          phone_number_id: string | null
+          provider: string
+          status: string
+          updated_at: string
+          webhook_verified_at: string | null
+        }
+        Insert: {
+          business_account_id?: string | null
+          connected_at?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          last_error?: string | null
+          organization_id: string
+          phone_number?: string | null
+          phone_number_id?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          webhook_verified_at?: string | null
+        }
+        Update: {
+          business_account_id?: string | null
+          connected_at?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          last_error?: string | null
+          organization_id?: string
+          phone_number?: string | null
+          phone_number_id?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          webhook_verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_accounts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
