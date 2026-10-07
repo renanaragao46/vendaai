@@ -224,7 +224,7 @@ export default {
       return Response.json({ received: true });
     }
 
-    const token = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
+    const token = Deno.env.get("WHATSAPP_ACCESS_TOKEN") ?? "";
     if (!isGatewayRequest && !token) {
       return Response.json({ error: "WHATSAPP_ACCESS_TOKEN not configured" }, { status: 503 });
     }
