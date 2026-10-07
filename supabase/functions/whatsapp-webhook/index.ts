@@ -10,7 +10,7 @@ async function sendWhatsAppText(account: any, to: string, text: string) {
       throw new Error("Gateway WhatsApp Web não configurado.");
     }
     const response = await fetch(
-      `${gatewayUrl.replace(/\\/$/, "")}/v1/instances/${encodeURIComponent(account.gateway_instance_id)}/messages`,
+      `${gatewayUrl.replace(/\/$/, "")}/v1/instances/${encodeURIComponent(account.gateway_instance_id)}/messages`,
       {
         method: "POST",
         headers: {
