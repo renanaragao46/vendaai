@@ -59,8 +59,8 @@ jobs:
         with:
           deno-version: v2.x
       - name: Typecheck AI Sales Engine
-        run: deno check supabase/functions/ai-sales-engine/index.ts
+        run: deno check --minimum-dependency-age 0 supabase/functions/ai-sales-engine/index.ts
       - name: Typecheck WhatsApp Webhook
-        run: deno check supabase/functions/whatsapp-webhook/index.ts
+        run: deno check --minimum-dependency-age 0 supabase/functions/whatsapp-webhook/index.ts
       - name: Typecheck WhatsApp Connect
-        run: deno check supabase/functions/whatsapp-connect/index.ts
+        run: deno check --minimum-dependency-age 0 supabase/functions/whatsapp-connect/index.ts
