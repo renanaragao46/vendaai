@@ -144,9 +144,11 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
         .from("whatsapp_accounts")
         .upsert(payload, { onConflict: "organization_id" });
       if (saveError) throw saveError;
-      const gatewayUrl = String(import.meta.env.VITE_WHATSAPP_GATEWAY_PUBLIC_URL ?? "https://vendaai-whatsapp-gateway.onrender.com").replace(/\\/$/, "");
+      // QR do WhatsApp usa exclusivamente o gateway público. Não chama Edge Function.
+      const gatewayUrl = "https://vendaai-whatsapp-gateway.onrender.com";
+      const instanceId = data?.gateway_instance_id ?? orgId;
       const response = await fetch(
-        `${gatewayUrl}/v1/instances/${encodeURIComponent(data?.gateway_instance_id ?? orgId)}/connect`,
+        `${gatewayUrl}/v1/instances/${encodeURIComponent(instanceId)}/connect?source=vendaai-direct`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -154,6 +156,7 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
             phone_number: data?.phone_number ?? null,
             organization_id: orgId,
           }),
+          cache: "no-store",
         },
       );
       const result = await response.json().catch(() => ({}));
@@ -239,7 +242,7 @@ function WhatsAppTab({ orgId, role }: { orgId: string; role: ReturnType<typeof u
         <div className="mt-4 flex flex-wrap gap-2">
           <Button onClick={() => connectQr.mutate()} disabled={!canAdmin(role) || connectQr.isPending}>
             <PlugZap className="mr-2 h-4 w-4" />
-            {connectQr.isPending ? "Gerando QR Code…" : "Gerar QR Code e conectar"}
+            {connectQr.isPending ? "Gerando QR Code…" : "Conectar WhatsApp por QR Code (gateway direto)"}
           </Button>
         </div>
         {isWeb && gatewayResult?.qr && !connected && (
