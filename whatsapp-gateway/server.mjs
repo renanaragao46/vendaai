@@ -34,13 +34,47 @@ function authorized(req) {
 function instancePath(id) { return join(DATA_DIR, "instances", id); }
 
 async function notifyVendaAI(instance, payload) {
-  if (!WEBHOOK_URL || !WEBHOOK_SECRET) return;
-  const response = await fetch(WEBHOOK_URL, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-vendaai-gateway-secret": WEBHOOK_SECRET },
-    body: JSON.stringify({ object: "whatsapp_web", instance_id: instance.id, ...payload }),
-  });
-  if (!response.ok) logger.warn({ status: response.status }, "VendaAI webhook returned non-2xx");
+  if (!WEBHOOK_URL || !WEBHOOK_SECRET) {
+    logger.error({
+      webhookUrlConfigured: Boolean(WEBHOOK_URL),
+      webhookSecretConfigured: Boolean(WEBHOOK_SECRET),
+      instance: instance.id,
+      eventStatus: payload?.status ?? "MESSAGE",
+    }, "VendaAI webhook delivery disabled: required environment variables are missing");
+    return false;
+  }
+
+  try {
+    const response = await fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-vendaai-gateway-secret": WEBHOOK_SECRET },
+      body: JSON.stringify({ object: "whatsapp_web", instance_id: instance.id, ...payload }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) {
+      const responseText = await response.text().catch(() => "");
+      logger.error({
+        status: response.status,
+        instance: instance.id,
+        eventStatus: payload?.status ?? "MESSAGE",
+        response: responseText.slice(0, 300),
+      }, "VendaAI webhook rejected event");
+      return false;
+    }
+    logger.info({
+      instance: instance.id,
+      eventStatus: payload?.status ?? "MESSAGE",
+      messageCount: Array.isArray(payload?.messages) ? payload.messages.length : 0,
+    }, "VendaAI webhook event delivered");
+    return true;
+  } catch (error) {
+    logger.error({
+      instance: instance.id,
+      eventStatus: payload?.status ?? "MESSAGE",
+      error: error instanceof Error ? error.message : String(error),
+    }, "VendaAI webhook request failed");
+    return false;
+  }
 }
 
 async function connectInstance(id) {
