@@ -308,9 +308,24 @@ function DirectionWorkspace({householdId,section}:{householdId:string;section:st
 }
 function AreaLanding({area,config,householdId,onSelect,onQuickTransaction}:{area:string;config:any;householdId:string;onSelect:(s:string)=>void;onQuickTransaction:(kind:string)=>void}){
  const tiles=config.tabs.filter((t:any)=>t.key!=="home");
- const ecommerce=useQuery({queryKey:["pv","ecommerce",householdId],enabled:area==="mimora",queryFn:()=>fetchHouseholdRows("ecommerce_daily_metrics",householdId,"*","date")});
+ const qc=useQueryClient();
+ const ecommerce=useQuery({queryKey:["pv","ecommerce",householdId],enabled:area==="mimora",queryFn:async()=>{
+  const rows=await fetchHouseholdRows("ecommerce_daily_metrics",householdId,"*","date");
+  const failures:string[]=[];
+  for(const row of rows){try{await syncOperationalIncome({householdId,source:"mimora",sourceId:row.id,date:row.date||dateNow(),amount:Number(row.revenue||0),description:"MIMORA · repasse recebido · "+String(row.product||row.campaign||row.store||"venda"),destination:"mercado_pago",category:"MIMORA"});}catch(error){failures.push(row.date+": "+((error as Error).message||"falha"));}}
+  if(failures.length)toast.error("Alguns repasses MIMORA não foram sincronizados: "+failures.slice(0,2).join(" | "));
+  else if(rows.length){qc.invalidateQueries({queryKey:["pv","finance_transactions",householdId]});qc.invalidateQueries({queryKey:["pv","transactions",householdId]});}
+  return rows;
+ }});
  const products=useQuery({queryKey:["pv","products",householdId],enabled:area==="mimora",queryFn:()=>fetchHouseholdRows("products",householdId,"id,status","created_at")});
- const beverages=useQuery({queryKey:["pv","beverage_events",householdId],enabled:area==="beverages",queryFn:()=>fetchHouseholdRows("beverage_events",householdId,"*","date")});
+ const beverages=useQuery({queryKey:["pv","beverage_events",householdId],enabled:area==="beverages",queryFn:async()=>{
+  const rows=await fetchHouseholdRows("beverage_events",householdId,"*","date");
+  const failures:string[]=[];
+  for(const row of rows){try{const status=String(row.status||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase();const completed=status.includes("realiz")||status.includes("conclu")||status.includes("finaliz");const amount=completed?(Array.isArray(row.items)&&row.items.length?row.items.reduce((sum:number,item:any)=>sum+Number(item.qty_sold||0)*Number(item.unit_price||0),0):Number(row.qty_sold||0)*Number(row.unit_price||0)):0;await syncOperationalIncome({householdId,source:"bebidas",sourceId:row.id,date:row.date||dateNow(),amount,description:"Bebidas · "+String(row.name||"evento"),destination:"mercado_pago",category:"Bebidas/eventos"});}catch(error){failures.push(row.date+": "+((error as Error).message||"falha"));}}
+  if(failures.length)toast.error("Alguns eventos de bebidas não foram sincronizados: "+failures.slice(0,2).join(" | "));
+  else if(rows.length){qc.invalidateQueries({queryKey:["pv","finance_transactions",householdId]});qc.invalidateQueries({queryKey:["pv","transactions",householdId]});}
+  return rows;
+ }});
  const accounts=useQuery({queryKey:["pv","accounts",householdId],enabled:area==="finance",queryFn:()=>fetchHouseholdRows("accounts",householdId,"*","name",false,false,true)});
  const transactions=useQuery({queryKey:["pv","transactions",householdId],enabled:area==="finance",queryFn:()=>fetchHouseholdRows("transactions",householdId,"*","date",true)});
  const debts=useQuery({queryKey:["pv","debts",householdId],enabled:area==="finance",queryFn:()=>fetchHouseholdRows("debts",householdId,"balance_informed,status","created_at",false,false,true)});
