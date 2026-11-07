@@ -202,7 +202,7 @@ function DrivingWorkspace({householdId}:{householdId:string}){
     await syncOperationalExpense({householdId,sourceId:row.id,date:row.date,amount:0,description:"",category:"Aluguel do veículo"});
    }catch(error){failures.push(row.date+": "+((error as Error).message||"falha ao sincronizar"));}
   }
-  if(failures.length)toast.error("Alguns turnos não foram sincronizados com Finanças: "+failures.slice(0,2).join(" | "));
+  if(failures.length)toast.error("Alguns turnos não foram sincronizados com Finanças: "+failures.slice(0,2).join(" | "));else if(rows.length){qc.invalidateQueries({queryKey:["pv","finance_transactions",householdId]});qc.invalidateQueries({queryKey:["pv","transactions",householdId]});qc.invalidateQueries({queryKey:["pv","account_movements",householdId]});}
   return rows;
  }});
  const n=(v:any)=>Number(v||0);const minutes=(v:string)=>v&&v.includes(":")?Number(v.split(":")[0])*60+Number(v.split(":")[1]):null;
