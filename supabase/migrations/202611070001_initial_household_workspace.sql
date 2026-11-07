@@ -186,9 +186,9 @@ begin
     'car_rent_week',735,'car_rent_status','a_confirmar','partner_label','Leticia','user_label','Renan')) returning id into h;
   insert into public.household_members(household_id,user_id,email,display_name,role) values (h, uid, auth.jwt()->>'email', p_display_name, 'owner');
 
-  insert into public.accounts(household_id,name,holder,type) values
-    (h,'Pessoal — Renan','usuario','pessoal'),(h,'Pessoal — Leticia','companheira','pessoal'),
-    (h,'Mercado Pago — Nossa','conjunto','digital'),(h,'Dinheiro em espécie','usuario','especie');
+  insert into public.accounts(household_id,name,holder,type,initial_balance,initial_status) values
+    (h,'Pessoal — Renan','usuario','pessoal',0,'confirmado'),(h,'Pessoal — Leticia','companheira','pessoal',0,'confirmado'),
+    (h,'Mercado Pago — Nossa','conjunto','digital',0,'confirmado'),(h,'Dinheiro em espécie','conjunto','especie',0,'confirmado');
   insert into public.categories(household_id,name,kind) select h, c, 'despesa' from unnest(array['Moradia','Alimentação','Combustível','Aluguel do veículo','Manutenção','Telefone/internet','Saúde','Lazer','Maçonaria/compromissos pessoais','Parcelas de dívidas','Impostos','Taxas','Estoque','Gelo','Transporte/logística','Anúncios','Taxas de plataforma','Pró-labore','Aporte','Empréstimo entre partes','Retirada','Investimento','Outros']) c;
   insert into public.categories(household_id,name,kind) select h, c, 'receita' from unnest(array['Uber','99','Bebidas/eventos','MIMORA','Salário CLT','Reembolso','Outros']) c;
 
