@@ -210,7 +210,7 @@ function FinanceDashboard({householdId,onQuickTransaction}:{householdId:string;o
  </div>;
 }
 function DirectionWorkspace({householdId,section}:{householdId:string;section:string}){
- const assets=useQuery({queryKey:["pv","direction_assets",householdId],queryFn:async()=>{const {data,error}=await (supabase as any).from("assets").select("id,name,kind,class,value,status,documented").eq("household_id",householdId).eq("archived",false);if(error)throw error;return data??[]}});
+ const assets=useQuery({queryKey:["pv","direction_assets",householdId],queryFn:async()=>{const {data,error}=await (supabase as any).from("assets").select("id,name,kind,class,value,status,documented").eq("household_id",householdId);if(error)throw error;return data??[]}});
  const debts=useQuery({queryKey:["pv","direction_debts",householdId],queryFn:async()=>{const {data,error}=await (supabase as any).from("debts").select("id,creditor,balance_informed,status").eq("household_id",householdId).eq("archived",false);if(error)throw error;return data??[]}});
  const confirmedAssets=(assets.data??[]).filter((a:any)=>a.status==="confirmado"&&String(a.kind||"").toLowerCase().includes("ativo"));
  const confirmedDebts=(debts.data??[]).filter((d:any)=>!["a_confirmar","estimado","rascunho","quitada","paga"].includes(String(d.status||"").toLowerCase()));
