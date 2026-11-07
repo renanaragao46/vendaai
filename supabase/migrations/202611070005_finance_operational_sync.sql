@@ -56,7 +56,7 @@ create or replace function public.calculate_beverage_item_totals()
 returns trigger
 language plpgsql
 set search_path = public
-as $
+as $function$
 declare
   v_revenue numeric(14,2);
   v_goods_cost numeric(14,2);
@@ -82,7 +82,7 @@ begin
   end if;
   return NEW;
 end;
-$;
+$function$;
 
 drop trigger if exists beverage_calculate_item_totals on public.beverage_events;
 create trigger beverage_calculate_item_totals
@@ -247,7 +247,7 @@ returns int
 language plpgsql
 security definer
 set search_path = public
-as $
+as $function$
 declare
   v_email text := lower(coalesce(auth.jwt() ->> 'email',''));
   r public.household_invites%rowtype;
@@ -278,7 +278,7 @@ begin
 
   return v_inserted;
 end;
-$;
+$function$;
 grant execute on function public.accept_my_invites() to authenticated;
 
 -- Normalize the visible labels stored with the shared workspace.
