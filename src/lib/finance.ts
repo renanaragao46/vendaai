@@ -100,6 +100,9 @@ export function calculateWealthTotals(
   const debtTotal = debtTotalCents / 100;
   const cashTotal = calculateCashTotal(accounts, transactions);
 
+  const totalLiabilitiesCents = assetLiabilitiesCents + debtTotalCents;
+  const netWorthCents = assetValueCents + moneyToCents(cashTotal) - totalLiabilitiesCents;
+
   return {
     confirmedAssets,
     confirmedLiabilities,
@@ -108,8 +111,8 @@ export function calculateWealthTotals(
     debtTotal,
     cashTotal,
     cash: cashTotal,
-    totalLiabilities: assetLiabilities + debtTotal,
-    netWorth: assetValue + cashTotal - assetLiabilities - debtTotal,
+    totalLiabilities: totalLiabilitiesCents / 100,
+    netWorth: netWorthCents / 100,
     pendingOpeningBalances: accounts.filter((account) => account.initial_status !== "confirmado").length,
   };
 }
