@@ -5,9 +5,9 @@ alter table public.categories
   add column if not exists icon text not null default 'tag';
 
 create unique index if not exists categories_household_global_name_uq
-  on public.categories (household_id, lower(name)) where project_node_id is null and archived = false;
+  on public.categories (household_id, lower(name), kind) where project_node_id is null and archived = false;
 create unique index if not exists categories_project_name_uq
-  on public.categories (household_id, project_node_id, lower(name)) where project_node_id is not null and archived = false;
+  on public.categories (household_id, project_node_id, lower(name), kind) where project_node_id is not null and archived = false;
 
 alter table public.transactions
   add column if not exists project_id uuid,
