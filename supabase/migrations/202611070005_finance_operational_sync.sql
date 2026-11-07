@@ -432,7 +432,6 @@ cross join lateral (values
   ('pedagios','Pedágios',coalesce(s.tolls,0)),
   ('lavagem','Lavagem',coalesce(s.wash,0)),
   ('manutencao','Manutenção',coalesce(s.maintenance,0)),
-  ('aluguel','Aluguel do veículo',coalesce(s.rent_alloc,0)),
   ('outros','Outros custos',coalesce(s.other_costs,0))
 ) as cost(code,label,amount)
 join lateral (
@@ -496,7 +495,7 @@ join lateral (
   order by case when name ilike '%mercado pago%' then 0 else 1 end,created_at
   limit 1
 ) a on true
-where coalesce(e.approved_payments,0)>0 and coalesce(e.revenue,0)>0
+where coalesce(e.revenue,0)>0
 on conflict (household_id,operation) where operation like 'pv:auto:%'
 do update set date=excluded.date,amount=excluded.amount,direction='entrada',
   description=excluded.description,category=excluded.category,account_id=excluded.account_id,
