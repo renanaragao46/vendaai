@@ -100,7 +100,8 @@ function Dashboard(){
    const dNet=d.reduce((s:number,r:any)=>s+Number(r.net??0),0);
    const b=(beverage.data??[]).filter((r:any)=>String(r.date).startsWith(month)&&["realizado","concluido","finalizado"].includes(String(r.status))).reduce((s:number,r:any)=>s+Number(r.net??0),0);
    const e=(ecommerce.data??[]).filter((r:any)=>String(r.date).startsWith(month)).reduce((s:number,r:any)=>s+Number(r.contribution??0),0);
-   const debtDue=(debts.data??[]).filter((d:any)=>d.status!=="quitada"&&d.next_due&&d.next_due>=dateNow()&&d.next_due<=new Date(Date.now()+7*86400000).toLocaleDateString("en-CA",{timeZone:"America/Sao_Paulo"}));\n   return {income,expenses,net:income-expenses,debt,cash,netWorth,due,dNet,b,e,debtDue};
+   const debtDue=(debts.data??[]).filter((d:any)=>d.status!=="quitada"&&d.next_due&&d.next_due>=dateNow()&&d.next_due<=new Date(Date.now()+7*86400000).toLocaleDateString("en-CA",{timeZone:"America/Sao_Paulo"}));
+   return {income,expenses,net:income-expenses,debt,cash,netWorth,due,dNet,b,e,debtDue};
  },[tx.data,debts.data,tasks.data,driving.data,beverage.data,ecommerce.data,accounts.data,assets.data,month]);
  const loading=tx.isLoading||debts.isLoading||tasks.isLoading||accounts.isLoading||assets.isLoading;
  const navItems=NAV;
