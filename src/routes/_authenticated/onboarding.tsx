@@ -1,108 +1,31 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { membershipQuery } from "@/lib/org";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-
-export const Route = createFileRoute("/_authenticated/onboarding")({
-  head: () => ({ meta: [{ title: "Configuração inicial — VendaAI" }] }),
-  component: Onboarding,
-});
-
-function Onboarding() {
-  const { user } = Route.useRouteContext();
-  const qc = useQueryClient();
-  const navigate = useNavigate();
-  const m = useQuery(membershipQuery(user.id));
-  const [f, setF] = useState({
-    name: "", segment: "", description: "", products: "", payment_methods: "", policies: "", ai_tone: "",
-  });
-  const [saving, setSaving] = useState(false);
-  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((s) => ({ ...s, [k]: e.target.value }));
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!f.name.trim() && !m.data) return toast.error("Informe o nome da empresa");
-    setSaving(true);
-    try {
-      let orgId = m.data?.org.id;
-      if (!orgId) {
-        const { data, error } = await supabase.rpc("create_organization", { _name: f.name });
-        if (error) throw error;
-        orgId = data as string;
-      }
-      const { error } = await supabase.from("organizations").update({
-        ...(f.name.trim() ? { name: f.name.trim() } : {}),
-        segment: f.segment || null, description: f.description || null, policies: f.policies || null,
-        ai_tone: f.ai_tone || null,
-        payment_methods: f.payment_methods.split(",").map((x) => x.trim()).filter(Boolean),
-        onboarding_completed: true,
-      }).eq("id", orgId);
-      if (error) throw error;
-      // Products: one per line, "Nome - 99,90". Normalize Brazilian
-      // currency and avoid creating duplicate names if onboarding is reopened.
-      const rows = f.products.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
-        const [name, price] = l.split(/\s+-\s+/);
-        const rawPrice = (price ?? "0").trim();
-        const normalizedPrice = rawPrice.includes(",")
-          ? rawPrice.replace(/\./g, "").replace(",", ".")
-          : rawPrice;
-        return {
-          organization_id: orgId!,
-          name: name.trim(),
-          price: Number(normalizedPrice) || 0,
-        };
-      }).filter((row) => row.name);
-
-      if (rows.length) {
-        const { data: existingProducts, error: existingProductsError } = await supabase
-          .from("products")
-          .select("name")
-          .eq("organization_id", orgId);
-        if (existingProductsError) throw existingProductsError;
-
-        const existingNames = new Set((existingProducts ?? []).map((product) => product.name.trim().toLowerCase()));
-        const newRows = rows.filter((row) => !existingNames.has(row.name.toLowerCase()));
-        if (newRows.length) {
-          const { error: productInsertError } = await supabase.from("products").insert(newRows);
-          if (productInsertError) throw productInsertError;
-        }
-      }
-      if (f.ai_tone) await supabase.from("agent_configs").update({ tone: f.ai_tone }).eq("organization_id", orgId);
-      await qc.invalidateQueries({ queryKey: ["membership"] });
-      navigate({ to: "/dashboard" });
-    } catch (err) {
-      toast.error((err as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="flex min-h-screen justify-center bg-background px-4 py-10">
-      <Card className="w-full max-w-2xl p-8 shadow-soft">
-        <h1 className="text-2xl font-semibold">Vamos configurar sua empresa</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Essas informações alimentam seu CRM e o agente de IA.</p>
-        <form onSubmit={submit} className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5"><Label>Nome da empresa *</Label><Input value={f.name} onChange={set("name")} placeholder={m.data?.org.name} /></div>
-          <div className="space-y-1.5"><Label>Segmento</Label><Input value={f.segment} onChange={set("segment")} /></div>
-          <div className="space-y-1.5 sm:col-span-2"><Label>Descrição</Label><Textarea value={f.description} onChange={set("description")} /></div>
-          <div className="space-y-1.5 sm:col-span-2"><Label>Produtos/serviços e preços</Label><Textarea value={f.products} onChange={set("products")} placeholder={"Um por linha: Nome - 99,90"} /></div>
-          <div className="space-y-1.5 sm:col-span-2"><Label>Formas de pagamento</Label><Input value={f.payment_methods} onChange={set("payment_methods")} placeholder="Pix, Cartão, Boleto" /></div>
-          <div className="space-y-1.5 sm:col-span-2"><Label>Políticas (troca, entrega...)</Label><Textarea value={f.policies} onChange={set("policies")} /></div>
-          <div className="space-y-1.5 sm:col-span-2"><Label>Tom de voz da IA</Label><Input value={f.ai_tone} onChange={set("ai_tone")} placeholder="Amigável e consultivo" /></div>
-          <div className="sm:col-span-2 flex justify-end">
-            <Button type="submit" disabled={saving}>{saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} Concluir</Button>
-          </div>
-        </form>
-      </Card>
-    </div>
-  );
+export const Route=createFileRoute("/_authenticated/onboarding")({head:()=>({meta:[{title:"Configuração inicial — Projeto de Vida"}]}),component:Onboarding});
+function Onboarding(){
+ const {user}=Route.useRouteContext() as any; const [name,setName]=useState("Projeto de Vida"); const [display,setDisplay]=useState(String(user.user_metadata?.display_name??"")); const [busy,setBusy]=useState(false); const nav=useNavigate();
+ const run=async(e:React.FormEvent)=>{e.preventDefault();setBusy(true);try{
+   await (supabase as any).rpc("accept_my_invites");
+   const {data:members,error:memberError}=await (supabase as any).from("household_members").select("household_id").eq("user_id",user.id).limit(1);
+   if(memberError)throw memberError;
+   if(!members?.length){const {error}=await (supabase as any).rpc("create_household",{p_name:name.trim()||"Projeto de Vida",p_display_name:display.trim()||"Administrador"});if(error)throw error;}
+   nav({to:"/dashboard"});
+ }catch(err){toast.error((err as Error).message)}finally{setBusy(false)}};
+ return <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10"><Card className="w-full max-w-lg p-7 sm:p-9">
+   <div className="flex items-center gap-2 text-primary"><ShieldCheck className="h-5 w-5"/><span className="text-sm font-medium">Configuração protegida</span></div>
+   <h1 className="mt-4 font-display text-2xl font-bold">Seu espaço de gestão</h1>
+   <p className="mt-2 text-sm leading-6 text-muted-foreground">Se você recebeu um convite, vamos vinculá-lo automaticamente. Se for o primeiro acesso, criaremos o espaço e carregaremos o plano inicial, as rotinas, as regras e a biblioteca de conhecimento.</p>
+   <form onSubmit={run} className="mt-6 space-y-4">
+    <div className="space-y-2"><Label>Nome do espaço</Label><Input value={name} onChange={e=>setName(e.target.value)} required/></div>
+    <div className="space-y-2"><Label>Seu nome de exibição</Label><Input value={display} onChange={e=>setDisplay(e.target.value)} placeholder="Administrador"/></div>
+    <Button className="w-full" disabled={busy}>{busy&&<Loader2 className="mr-2 h-4 w-4 animate-spin"/>}Criar ou entrar no espaço</Button>
+   </form>
+   <p className="mt-5 text-xs leading-5 text-muted-foreground">Somente usuários vinculados ao mesmo espaço conseguem consultar ou alterar registros. O banco aplica políticas RLS em todas as tabelas.</p>
+ </Card></main>
 }
