@@ -126,6 +126,31 @@ create unique index if not exists transactions_household_auto_operation_uq
   on public.transactions(household_id, operation)
   where operation like 'pv:auto:%';
 
+-- A movement may only point to accounts inside the same household.
+-- NOT VALID preserves legacy rows while enforcing all new writes immediately.
+create unique index if not exists accounts_id_household_uq
+  on public.accounts(id, household_id);
+
+do $function$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'transactions_account_household_fk') then
+    alter table public.transactions
+      add constraint transactions_account_household_fk
+      foreign key (account_id, household_id)
+      references public.accounts(id, household_id)
+      on delete restrict not valid;
+  end if;
+
+  if not exists (select 1 from pg_constraint where conname = 'transactions_transfer_account_household_fk') then
+    alter table public.transactions
+      add constraint transactions_transfer_account_household_fk
+      foreign key (transfer_account_id, household_id)
+      references public.accounts(id, household_id)
+      on delete restrict not valid;
+  end if;
+end;
+$function$;
+
 -- A source operation owns one matching confirmed income entry in Finance.
 create or replace function public.sync_household_operational_income()
 returns trigger
