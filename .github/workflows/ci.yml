@@ -22,3 +22,5 @@ jobs:
         run: bun run build
       - name: Type-check TypeScript
         run: bunx tsc --noEmit
+      - name: Run financial and application tests
+        run: bun run test
