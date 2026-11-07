@@ -44,15 +44,15 @@ const NAV=[
  {key:"accounts",label:"Finanças",icon:Wallet},
  {key:"transactions",label:"Movimentações",icon:ArrowUpRight},
  {key:"debts",label:"Dívidas",icon:CreditCard},
- {key:"driving_sessions",label:"Uber / 99",icon:Activity},
- {key:"beverage_events",label:"Bebidas",icon:Store},
- {key:"ecommerce_daily_metrics",label:"MIMORA",icon:BriefcaseBusiness},
+ {key:"driving_sessions",label:"99 / Uber",icon:Activity},
+ {key:"beverage_events",label:"Venda de bebidas",icon:Store},
+ {key:"ecommerce_daily_metrics",label:"MIMORA · Loja",icon:BriefcaseBusiness},
  {key:"products",label:"Produtos e lojas",icon:Store},
  {key:"six_month_phases",label:"Plano 6 meses",icon:Target},
  {key:"tasks",label:"Tarefas e rotina",icon:ListTodo},
  {key:"notes",label:"Notas",icon:FileText},
  {key:"knowledge_lessons",label:"Biblioteca",icon:BookOpen},
- {key:"rules",label:"Regras",icon:ShieldCheck},
+ 
  {key:"decisions",label:"Decisões",icon:CheckCircle2},
  {key:"meetings",label:"Reuniões",icon:CalendarDays},
  {key:"assets",label:"Patrimônio",icon:CircleDollarSign},
@@ -60,18 +60,18 @@ const NAV=[
  {key:"settings",label:"Acesso e configurações",icon:Settings},
 ] as const;
 const NAV_GROUPS=[
- {label:"INÍCIO",keys:["overview","map"]},
- {label:"DINHEIRO",keys:["accounts","transactions","debts","assets","budgets"]},
- {label:"OPERAÇÕES",keys:["driving_sessions","beverage_events","ecommerce_daily_metrics","products"]},
- {label:"PLANEJAMENTO",keys:["six_month_phases","tasks"]},
- {label:"GESTÃO E CONHECIMENTO",keys:["notes","knowledge_lessons","rules","decisions","meetings","settings"]},
+ {label:"CENTRO DE COMANDO",keys:["overview","map"]},
+ {label:"MINHAS ÁREAS",keys:["driving_sessions","ecommerce_daily_metrics","beverage_events"]},
+ {label:"DINHEIRO DA VIDA",keys:["accounts","transactions","debts","assets","budgets"]},
+ {label:"PLANEJAR E EVOLUIR",keys:["six_month_phases","tasks","notes","knowledge_lessons","decisions","meetings"]},
+ {label:"ADMINISTRAÇÃO",keys:["settings"]},
 ] as const;
 const NAV_TONES:Record<string,string>={
  overview:"text-sky-300",map:"text-violet-300",
  accounts:"text-cyan-300",transactions:"text-emerald-300",debts:"text-rose-300",assets:"text-indigo-300",budgets:"text-teal-300",
  driving_sessions:"text-amber-300",beverage_events:"text-orange-300",ecommerce_daily_metrics:"text-pink-300",products:"text-fuchsia-300",
  six_month_phases:"text-violet-300",tasks:"text-lime-300",
- notes:"text-slate-300",knowledge_lessons:"text-teal-300",rules:"text-yellow-300",decisions:"text-emerald-300",meetings:"text-blue-300",settings:"text-slate-300",
+ notes:"text-slate-300",knowledge_lessons:"text-teal-300",decisions:"text-emerald-300",meetings:"text-blue-300",settings:"text-slate-300",
 };
 const brl=(n:number)=>Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const dateNow=()=>new Date().toLocaleDateString("en-CA",{timeZone:"America/Sao_Paulo"});
@@ -107,7 +107,7 @@ function Dashboard(){
  const navItems=NAV;
  return <div className="grid gap-5 lg:grid-cols-[230px_minmax(0,1fr)]">
   <aside className={`rounded-2xl border border-slate-700/70 bg-[#111D31] p-3 shadow-[0_18px_55px_-30px_rgba(0,0,0,.8)] lg:sticky lg:top-20 lg:h-[calc(100vh-110px)] lg:overflow-y-auto ${mobileNav?"block":"hidden lg:block"}`}>
-   <div className="px-3 py-3"><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-sky-300">CENTRO DE COMANDO</p><p className="mt-1 font-display text-lg font-bold text-white">Navegação</p><p className="mt-1 text-[11px] leading-5 text-slate-400">Cada área tem sua própria identidade.</p></div>
+   <div className="px-3 py-3"><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-sky-300">CENTRO DE COMANDO</p><p className="mt-1 font-display text-lg font-bold text-white">Espaços de trabalho</p><p className="mt-1 text-[11px] leading-5 text-slate-400">Entre em uma área para encontrar sua operação, seus números e seus controles.</p></div>
    <nav className="space-y-4">{NAV_GROUPS.map(group=><div key={group.label}><p className="mb-1.5 px-3 text-[9px] font-bold tracking-[.18em] text-slate-500">{group.label}</p><div className="grid grid-cols-2 gap-1 lg:grid-cols-1">{group.keys.map(key=>{const n=navItems.find(item=>item.key===key)!;const active=tab===n.key;return <button key={n.key} onClick={()=>{setTab(n.key);setMobileNav(false)}} className={`flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium transition-all ${active?"border-sky-400/30 bg-sky-400/10 text-white shadow-sm":"border-transparent text-slate-300 hover:border-slate-600/70 hover:bg-slate-800/80 hover:text-white"}`}><n.icon className={`h-4 w-4 shrink-0 ${active?"text-sky-300":NAV_TONES[n.key]||"text-slate-400"}`}/><span className="leading-4">{n.label}</span>{active&&<span className="ml-auto h-1.5 w-1.5 rounded-full bg-sky-300"/>}</button>})}</div></div>)}</nav>
    <div className="mt-5 rounded-xl border border-emerald-400/15 bg-emerald-400/5 p-3 text-[11px] leading-5 text-slate-300"><ShieldCheck className="mb-1 h-4 w-4 text-emerald-300"/>Espaço privado. Seus dados são compartilhados somente com os membros autorizados.</div>
   </aside>
