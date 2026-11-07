@@ -133,7 +133,7 @@ begin
     v_destination:='mercado_pago';
     v_holder:='conjunto';
     v_date:=case when TG_OP='DELETE' then OLD.date else NEW.date end;
-    if TG_OP<>'DELETE' and coalesce(NEW.approved_payments,0)>0 then
+    if TG_OP<>'DELETE' then
       v_amount:=coalesce(NEW.revenue,0);
     end if;
     v_category:='MIMORA';
@@ -353,7 +353,7 @@ join lateral (
     and (name ilike '%mercado pago%' or holder in ('conjunto','nossa'))
   order by case when name ilike '%mercado pago%' then 0 else 1 end,created_at limit 1
 ) a on true
-where coalesce(e.approved_payments,0)>0 and coalesce(e.revenue,0)>0
+where coalesce(e.revenue,0)>0
 on conflict(household_id,operation) where operation like 'pv:auto:%'
 do update set date=excluded.date,amount=excluded.amount,direction='entrada',
   description=excluded.description,category=excluded.category,account_id=excluded.account_id,
