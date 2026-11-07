@@ -204,7 +204,7 @@ begin
     operation,status,nature,notes
   ) values (
     v_household_id,coalesce(v_date,current_date),v_amount,'entrada',v_description,
-    v_category,v_account_id,v_holder,v_operation,'confirmado','receita',
+    v_category,v_account_id,v_holder,v_operation,'confirmado',case when v_destination = 'renan' then 'pessoal' else 'empresarial' end,
     'Gerado automaticamente a partir do registro operacional. Edite a origem para ajustar este lançamento.'
   )
   on conflict (household_id,operation) where operation like 'pv:auto:%'
