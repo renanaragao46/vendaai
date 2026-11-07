@@ -240,6 +240,47 @@ create trigger sync_mimora_income_to_finance
 after insert or update or delete on public.ecommerce_daily_metrics
 for each row execute function public.sync_household_operational_income();
 
+
+-- A user belongs to one shared life workspace. Accept only one pending invite.
+create or replace function public.accept_my_invites()
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $
+declare
+  v_email text := lower(coalesce(auth.jwt() ->> 'email',''));
+  r public.household_invites%rowtype;
+  v_inserted integer := 0;
+begin
+  if auth.uid() is null or v_email = '' then return 0; end if;
+  if exists (select 1 from public.household_members where user_id = auth.uid()) then
+    return 0;
+  end if;
+
+  select * into r
+    from public.household_invites
+    where lower(email) = v_email and accepted_at is null
+    order by created_at
+    limit 1
+    for update skip locked;
+
+  if not found then return 0; end if;
+
+  insert into public.household_members(household_id,user_id,email,role)
+    values(r.household_id,auth.uid(),v_email,'member')
+    on conflict do nothing;
+
+  get diagnostics v_inserted = row_count;
+  if v_inserted > 0 then
+    update public.household_invites set accepted_at = now() where id = r.id;
+  end if;
+
+  return v_inserted;
+end;
+$;
+grant execute on function public.accept_my_invites() to authenticated;
+
 -- Normalize the visible labels stored with the shared workspace.
 update public.households
 set settings = jsonb_set(
