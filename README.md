@@ -1,3 +1,31 @@
-# VendaAI\n\nVendaAI é um SaaS de vendas com CRM, atendimento inteligente por WhatsApp e motor de IA configurável por empresa.\n\n## Fonte oficial\n\nO GitHub é a fonte de verdade do código. Alterações de produção devem ser feitas no repositório e na branch main.\n\n## Desenvolvimento local\n\nRequisitos: Bun e uma instância Supabase conectada ao projeto.\n\n```sh\ngit clone https://github.com/renanaragao46/vendaai.git\ncd vendaai\nbun install\nbun run dev\n```\n\nO frontend precisa de VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY. No SSR também podem ser usados SUPABASE_URL e SUPABASE_PUBLISHABLE_KEY.\n\n## Backend / Edge Functions\n\nConfigure somente no ambiente Supabase: OPENAI_API_KEY, WHATSAPP_ACCESS_TOKEN, WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN e, opcionalmente, WHATSAPP_GRAPH_VERSION (padrão v24.0).
+# Projeto de Vida
 
-Para o conector opcional de WhatsApp Web, configure também WHATSAPP_WEB_GATEWAY_URL e WHATSAPP_WEB_GATEWAY_TOKEN no backend. O gateway é um serviço Node persistente separado do Supabase Edge Functions, pois a sessão WhatsApp Web mantém WebSockets e credenciais de sessão de longa duração.\n\nNenhum desses valores deve ficar no frontend, GitHub ou banco de dados.\n\nO modelo padrão do agente é gpt-6-luna.\n\n## Banco de dados\n\nAs migrations ficam em drizzle/migrations e devem ser aplicadas ao mesmo backend Supabase conectado ao VendaAI.\n\nA sequência histórica em drizzle/migrations termina em 0016_harden_organization_membership.sql. A sincronização do banco conectado também é registrada em supabase/migrations e inclui as correções de permissões, imutabilidade de organização, integridade entre tenants, idempotência de mensagens e prevenção de conversas WhatsApp duplicadas.\n\nAs regras de RLS e os gatilhos impedem acesso cruzado entre empresas, alteração de organization_id, referências entre registros de organizações diferentes, handoffs abertos duplicados, mensagens externas duplicadas em concorrência e conversas WhatsApp abertas duplicadas.\n\n## WhatsApp\n\nO webhook valida o verify token e a assinatura x-hub-signature-256. O processamento é idempotente e reenvios da Meta não devem gerar uma segunda resposta da IA quando a resposta original já foi registrada.\n\nO atendimento suporta texto, áudio com transcrição, imagens/documentos como entrada, transferência para humano, retomada da IA, memória do cliente, intenção, temperatura, etapa de vendas e validação da resposta.\n\n## CI\n\nO workflow .github/workflows/ci.yml executa TypeScript, ESLint, testes, build do frontend e typecheck das Edge Functions em push e pull request para main.\n\n## Segurança\n\nNunca versione chaves OpenAI, tokens Meta, app secrets, verify tokens ou service-role keys. O frontend usa somente a chave pública do Supabase; credenciais de provedores ficam nas Edge Functions.\n\n## Estado de produção\n\nO código e as migrations estão versionados no GitHub. CI/deploy e aplicação efetiva das migrations no backend conectado precisam ser verificados no ambiente de infraestrutura; não são considerados concluídos apenas por existirem no repositório.
+Painel privado de gestão pessoal, familiar e empresarial: finanças, dívidas, operações, rotina, projetos, mapa mental e plano de execução de seis meses.
+
+## Fonte oficial
+Este repositório é a fonte de verdade do código. O produto VendaAI foi descontinuado; a base técnica está sendo reaproveitada para o Projeto de Vida. O histórico Git anterior é preservado para rastreabilidade.
+
+## Stack existente
+TanStack Start, React, TypeScript, Tailwind, shadcn/ui, Supabase e CI. A arquitetura será auditada e adaptada gradualmente; componentes e serviços exclusivos de WhatsApp/CRM devem ser removidos quando não houver dependências.
+
+## Desenvolvimento
+Requisitos: Bun e projeto Supabase próprio para o Projeto de Vida.
+
+```sh
+git clone -b projeto-de-vida https://github.com/renanaragao46/vendaai.git projeto-de-vida
+cd projeto-de-vida
+bun install
+bun run dev
+```
+
+## Especificação
+Consulte [docs/PROJECT_BLUEPRINT.md](docs/PROJECT_BLUEPRINT.md) para módulos, regras financeiras, métricas, rotina, plano de 180 dias, segurança e critérios de aceite.
+
+## Segurança
+Não versionar arquivos .env, tokens, service-role keys, senhas ou documentos pessoais. Usar somente variáveis de ambiente locais e secrets do provedor. A branch de trabalho remove o arquivo .env rastreado do snapshot atual; isso não apaga o histórico público anterior. Se algum valor privado tiver sido incluído em commits antigos, revogue/rotacione no provedor correspondente.
+
+## Banco de dados
+Criar um Supabase novo e isolado para o Projeto de Vida. Não reutilizar tabelas, usuários ou dados de produção do VendaAI sem auditoria, backup e migração explícita. Implementar RLS por workspace desde a primeira migration.
+
+## Git / Lovable
+Trabalhar inicialmente na branch `projeto-de-vida`. Conectar este repositório ao projeto Lovable Projeto de Vida pela interface GitHub do Lovable, selecionando esta branch. Fazer commits no GitHub como fonte de verdade; evitar prompts repetitivos de geração no Lovable para economizar créditos.
