@@ -3,11 +3,12 @@ import { WorkspaceProvider } from "@/lib/workspace";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/app/app-shell";
 export const Route = createFileRoute("/_authenticated/_shell")({
-  beforeLoad: async ({ context }) => {
+  beforeLoad: async ({ context, location }) => {
+    if (location.pathname !== "/dashboard") throw redirect({ to: "/dashboard" });
     const user = (context as any).user;
     if (!user?.id) throw redirect({ to: "/auth" });
     const { data: members, error } = await (supabase as any).from("household_members")
-      .select("household_id, role").eq("user_id", user.id).limit(1);
+      .select("household_id, role").eq("user_id", user.id).order("created_at", { ascending: true }).limit(1);
     if (error) throw error;
     const member = members?.[0];
     if (!member) throw redirect({ to: "/onboarding" });
