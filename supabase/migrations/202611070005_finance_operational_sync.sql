@@ -1,3 +1,7 @@
+-- New accounts start at a known zero, not an ambiguous pending balance.
+alter table public.accounts alter column initial_balance set default 0, alter column initial_status set default 'confirmado';
+update public.accounts set initial_balance=0, initial_status='confirmado' where archived=false and (initial_balance is null or initial_balance=0) and initial_status='a_confirmar';
+
 -- Keep the shared household accounts aligned with the four real destinations.
 do $$
 declare
