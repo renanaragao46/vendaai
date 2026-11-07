@@ -66,7 +66,7 @@ begin
       coalesce(sum(coalesce((item->>'qty_sold')::numeric,0) * coalesce((item->>'unit_price')::numeric,0)),0),
       coalesce(sum((coalesce((item->>'qty_sold')::numeric,0) + coalesce((item->>'qty_loss')::numeric,0)) * coalesce((item->>'unit_cost')::numeric,0)),0)
     into v_revenue, v_goods_cost
-    from jsonb_array_elements(NEW.items) as item;
+    from jsonb_array_elements(NEW.items) as items(item);
 
     NEW.items_revenue := round(v_revenue,2);
     NEW.items_goods_cost := round(v_goods_cost,2);
