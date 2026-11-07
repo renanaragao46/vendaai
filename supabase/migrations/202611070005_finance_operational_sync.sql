@@ -52,6 +52,47 @@ end $$;
 
 alter table public.beverage_events add column if not exists items_revenue numeric(12,2), add column if not exists items_goods_cost numeric(12,2), add column if not exists items_net numeric(12,2);
 
+create or replace function public.calculate_beverage_item_totals()
+returns trigger
+language plpgsql
+set search_path = public
+as $
+declare
+  v_revenue numeric(14,2);
+  v_goods_cost numeric(14,2);
+begin
+  if jsonb_array_length(coalesce(NEW.items,'[]'::jsonb)) > 0 then
+    select
+      coalesce(sum(coalesce((item->>'qty_sold')::numeric,0) * coalesce((item->>'unit_price')::numeric,0)),0),
+      coalesce(sum((coalesce((item->>'qty_sold')::numeric,0) + coalesce((item->>'qty_loss')::numeric,0)) * coalesce((item->>'unit_cost')::numeric,0)),0)
+    into v_revenue, v_goods_cost
+    from jsonb_array_elements(NEW.items) as item;
+
+    NEW.items_revenue := round(v_revenue,2);
+    NEW.items_goods_cost := round(v_goods_cost,2);
+    NEW.items_net := round(
+      v_revenue - v_goods_cost - coalesce(NEW.ice,0) - coalesce(NEW.transport,0) -
+      coalesce(NEW.space_fee,0) - coalesce(NEW.helpers,0) - coalesce(NEW.other_costs,0),
+      2
+    );
+  else
+    NEW.items_revenue := null;
+    NEW.items_goods_cost := null;
+    NEW.items_net := null;
+  end if;
+  return NEW;
+end;
+$;
+
+drop trigger if exists beverage_calculate_item_totals on public.beverage_events;
+create trigger beverage_calculate_item_totals
+before insert or update on public.beverage_events
+for each row execute function public.calculate_beverage_item_totals();
+
+-- Recalculate legacy multi-product events with the same item-level arithmetic.
+update public.beverage_events set items = items
+where jsonb_array_length(coalesce(items,'[]'::jsonb)) > 0;
+
 -- The source record is the canonical record; its finance entry is a durable, unique projection.
 with duplicates as (
   select id, row_number() over (
