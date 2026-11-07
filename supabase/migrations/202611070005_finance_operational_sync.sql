@@ -50,6 +50,8 @@ begin
   end loop;
 end $$;
 
+alter table public.beverage_events add column if not exists items_revenue numeric(12,2), add column if not exists items_goods_cost numeric(12,2), add column if not exists items_net numeric(12,2);
+
 -- The source record is the canonical record; its finance entry is a durable, unique projection.
 with duplicates as (
   select id, row_number() over (
@@ -105,9 +107,9 @@ begin
     v_destination := 'mercado_pago';
     v_holder := 'conjunto';
     v_date := case when TG_OP = 'DELETE' then OLD.date else NEW.date end;
-    v_status := case when TG_OP = 'DELETE' then '' else lower(unaccent(coalesce(NEW.status,''))) end;
+    v_status := case when TG_OP = 'DELETE' then '' else lower(translate(coalesce(NEW.status,''),'áàâãéêíóôõúç','aaaaeeiooouc')) end;
     if TG_OP <> 'DELETE' and (v_status like '%realiz%' or v_status like '%conclu%' or v_status like '%finaliz%') then
-      v_amount := coalesce(NEW.revenue,0);
+      v_amount := coalesce(NEW.items_revenue,NEW.revenue,0);
     end if;
     v_category := 'Bebidas/eventos';
     v_description := 'Bebidas · ' || case when TG_OP = 'DELETE' then 'evento' else coalesce(NEW.name,'evento') end;
