@@ -1,34 +1,38 @@
-# Configuração privada do Projeto de Vida
+# Backend privado — Projeto de Vida
 
-## 1. Criar o banco isolado
-Crie um projeto novo no Supabase (plano Free). Não conecte nem reutilize o banco antigo do VendaAI.
+## Estado atual
+O projeto Supabase do Projeto de Vida já está provisionado dentro do Lovable Cloud e foi inspecionado. O banco já contém as tabelas de households, membros/convites, contas, transações, dívidas, orçamentos, patrimônio, mapa mental, tarefas, Uber/99, bebidas, e-commerce, fases de seis meses, notas, decisões, reuniões, biblioteca e regras.
 
-## 2. Aplicar a estrutura
-No Supabase, abra SQL Editor e execute integralmente:
-`supabase/migrations/202611070001_initial_household_workspace.sql`
+**Não crie outro projeto Supabase. Não reutilize o backend do VendaAI. Não execute uma migration inicial em outro banco.**
 
-## 3. Criar os dois usuários
-Em Authentication → Users, convide/crie apenas os dois e-mails autorizados. Desative o cadastro público (Authentication → Providers / Signups, conforme a interface atual). Use senha forte e MFA quando disponível.
+## Estrutura e segurança
+- Fonte do esquema: `supabase/migrations/202611070001_initial_household_workspace.sql`.
+- Endurecimento RLS: `supabase/migrations/202611070002_household_security.sql`.
+- Funções existentes: `create_household(text,text)`, `accept_my_invites()`, `is_household_member(uuid)` e `create_household_invite(text)`.
+- RLS protege cada linha pelo household_id.
+- O household aceita no máximo duas pessoas.
+- Apenas owner administra o household e cria convites.
+- Usuários convidados aceitam o vínculo pelo e-mail autenticado.
+- Nenhuma chave service_role é usada no frontend.
 
-## 4. Criar o espaço compartilhado
-Depois de criar os usuários, copie os UUIDs exibidos na lista de usuários e execute no SQL Editor, substituindo os marcadores:
-```sql
-insert into public.workspaces (id, name)
-values ('COLOQUE-UM-UUID-NOVO-AQUI', 'Projeto de Vida');
+## Configuração da aplicação
+A aplicação hospedada no Render já recebeu as variáveis públicas do backend Lovable Cloud:
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_URL`
+- `SUPABASE_PUBLISHABLE_KEY`
 
-insert into public.workspace_members (workspace_id, user_id, role)
-values
-('UUID-DO-WORKSPACE', 'UUID-DO-USUARIO-1', 'owner'),
-('UUID-DO-WORKSPACE', 'UUID-DO-USUARIO-2', 'member');
-```
-O banco usa RLS: consultas e alterações nas tabelas operacionais só são permitidas a membros do workspace.
+Essas chaves são configuradas no ambiente do provedor e não devem ser adicionadas ao repositório. A chave publishable/anon é própria para uso no cliente; nunca use service_role/secret key.
 
-## 5. Variáveis de ambiente
-No provedor de hospedagem, configure:
-- `VITE_SUPABASE_URL`: Project URL
-- `VITE_SUPABASE_PUBLISHABLE_KEY`: publishable/anon key
+## Primeiro acesso
+1. Acesse a aplicação publicada.
+2. Crie sua conta com e-mail e senha.
+3. No primeiro acesso, o sistema chama `create_household` e inicializa categorias, contas, dívida a confirmar, orçamento inicial, mapa mental, rotina, plano de seis meses, regras e biblioteca.
+4. Em Configurações, o owner cria um convite para o e-mail da segunda pessoa.
+5. A segunda pessoa cria sua conta usando exatamente o e-mail convidado; o sistema aceita o convite no onboarding.
+6. Somente as duas contas vinculadas ao household podem acessar os registros.
 
-Nunca use `service_role`, secret key, senha de banco ou token privado no frontend, GitHub ou em mensagens.
+O cadastro de uma conta, por si só, não concede acesso aos dados. O acesso depende de membership e RLS.
 
-## 6. Privacidade
-O link do site não é segredo. A proteção vem do login e das políticas RLS do banco. Não armazenar documentos pessoais desnecessários. Fazer backup periódico pelo Supabase.
+## Operação local
+Para rodar localmente, configure as variáveis acima no arquivo `.env.local` usando os valores do Lovable Cloud. Nunca faça commit desse arquivo.
