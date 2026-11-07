@@ -71,6 +71,23 @@ describe("financial ledger", () => {
     expect(wealth.netWorth).toBe(7250);
   });
 
+  it("adds fractional assets and liabilities in integer cents", () => {
+    const wealth = calculateWealthTotals(
+      [
+        { kind: "ativo", class: "imóvel", value: 10000.1, status: "confirmado" },
+        { kind: "passivo", class: "obrigação", value: 1000.2, status: "confirmado" },
+      ],
+      [{ status: "ativa", balance_informed: 2000.3 }],
+      accounts,
+      [{ status: "confirmado", direction: "entrada", amount: 100, account_id: "renan" }],
+    );
+    expect(wealth.assetValue).toBe(10000.1);
+    expect(wealth.assetLiabilities).toBe(1000.2);
+    expect(wealth.debtTotal).toBe(2000.3);
+    expect(wealth.cashTotal).toBe(250);
+    expect(wealth.netWorth).toBe(7249.6);
+  });
+
   it("uses the same open-debt rule in every dashboard", () => {
     expect(isDebtOpen({ status: "ativa" })).toBe(true);
     expect(isDebtOpen({ status: "atrasada" })).toBe(true);
