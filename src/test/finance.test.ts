@@ -49,6 +49,18 @@ describe("financial ledger", () => {
     expect(balances[2].balance_status).toBe("parcial");
   });
 
+  it("keeps an account marked partial when confirmed movements net to zero", () => {
+    const balances = calculateAccountBalances(
+      [{ id: "mp", initial_balance: 80, initial_status: "a_confirmar" }],
+      [
+        { status: "confirmado", direction: "entrada", amount: 30, account_id: "mp" },
+        { status: "confirmado", direction: "saida", amount: 30, account_id: "mp" },
+      ],
+    );
+    expect(balances[0].balance).toBe(0);
+    expect(balances[0].balance_status).toBe("parcial");
+  });
+
   it("calculates net worth from confirmed assets, cash and open liabilities only", () => {
     const wealth = calculateWealthTotals(
       [
