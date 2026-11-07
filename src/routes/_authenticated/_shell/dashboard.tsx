@@ -226,6 +226,7 @@ function DirectionWorkspace({householdId,section}:{householdId:string;section:st
  const movements=useQuery({queryKey:["pv","direction_movements",householdId],queryFn:()=>fetchHouseholdRows("transactions",householdId,"account_id,transfer_account_id,direction,amount,status")});
  const wealth=calculateWealthTotals(assets.data??[],debts.data??[],accounts.data??[],movements.data??[]);
  const confirmedAssets=wealth.confirmedAssets;
+ const confirmedDebts=(debts.data??[]).filter(isDebtOpen);
  const cashTotal=wealth.cashTotal;
  const assetTotal=wealth.assetValue+cashTotal;
  const debtTotal=wealth.totalLiabilities;
