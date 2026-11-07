@@ -30,7 +30,11 @@ begin
       order by case when name ilike '%mercado pago%' then 0 else 1 end, created_at
       limit 1;
 
-    if v_market_id is null then
+    if v_market_id is not null then
+      update public.accounts
+        set name = 'Mercado Pago — Nossa', holder = 'conjunto', type = 'digital'
+        where id = v_market_id and household_id = h.id;
+    else
       select id into v_placeholder_id
         from public.accounts
         where household_id = h.id and archived = false
