@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateAccountBalances, calculateCashTotal, isDebtOpen } from "@/lib/finance";
+import { calculateAccountBalances, calculateCashTotal, calculateWealthTotals, isDebtOpen } from "@/lib/finance";
 
 const accounts = [
   { id: "renan", initial_balance: 100, initial_status: "confirmado" },
@@ -38,6 +38,37 @@ describe("financial ledger", () => {
     }));
 
     expect(calculateAccountBalances(accounts, movements)[0].balance).toBe(110);
+  });
+
+  it("marks pending opening balances as partial instead of silently confirmed", () => {
+    const balances = calculateAccountBalances(accounts, [
+      { status: "confirmado", direction: "entrada", amount: 20, account_id: "mp" },
+    ]);
+    expect(balances[0].balance_status).toBe("confirmado");
+    expect(balances[1].balance_status).toBe("confirmado");
+    expect(balances[2].balance_status).toBe("parcial");
+  });
+
+  it("calculates net worth from confirmed assets, cash and open liabilities only", () => {
+    const wealth = calculateWealthTotals(
+      [
+        { kind: "ativo", class: "veículo", value: 10000, status: "confirmado" },
+        { kind: "ativo", class: "conta bancária", value: 5000, status: "confirmado" },
+        { kind: "passivo", class: "contrato", value: 1000, status: "confirmado" },
+        { kind: "ativo", class: "imóvel", value: 90000, status: "a_confirmar" },
+      ],
+      [
+        { status: "ativa", balance_informed: 2000 },
+        { status: "paga", balance_informed: 7000 },
+      ],
+      accounts,
+      [{ status: "confirmado", direction: "entrada", amount: 100, account_id: "renan" }],
+    );
+    expect(wealth.assetValue).toBe(10000);
+    expect(wealth.assetLiabilities).toBe(1000);
+    expect(wealth.debtTotal).toBe(2000);
+    expect(wealth.cashTotal).toBe(150);
+    expect(wealth.netWorth).toBe(7150);
   });
 
   it("uses the same open-debt rule in every dashboard", () => {
