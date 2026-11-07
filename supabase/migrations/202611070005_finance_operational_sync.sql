@@ -6,11 +6,6 @@ alter table public.accounts
   alter column initial_balance set default 0,
   alter column initial_status set default 'confirmado';
 
-alter table public.beverage_events
-  add column if not exists items_revenue numeric(12,2),
-  add column if not exists items_goods_cost numeric(12,2),
-  add column if not exists items_net numeric(12,2);
-
 -- Normalize the four household destinations without repurposing the cash account.
 do $function$
 declare
@@ -27,6 +22,14 @@ begin
     update public.accounts
       set name = 'Pessoal — Leticia'
       where household_id = h.id and lower(name) = lower('Pessoal — Companheira');
+
+    update public.accounts
+      set holder = 'usuario', type = 'pessoal'
+      where household_id = h.id and lower(name) = lower('Pessoal — Renan');
+
+    update public.accounts
+      set holder = 'companheira', type = 'pessoal'
+      where household_id = h.id and lower(name) = lower('Pessoal — Leticia');
 
     update public.accounts
       set name = 'Dinheiro em espécie', holder = 'conjunto', type = 'especie'
@@ -79,14 +82,6 @@ begin
   end loop;
 end;
 $function$;
-
--- Zero balances are real, confirmed opening balances. Preserve any nonzero
--- opening balance until a person explicitly confirms it.
-update public.accounts
-set initial_balance = 0, initial_status = 'confirmado'
-where archived = false
-  and coalesce(initial_balance,0) = 0
-  and coalesce(initial_status,'a_confirmar') = 'a_confirmar';
 
 -- Normalize historical automatic cost keys before enforcing uniqueness.
 update public.transactions
@@ -424,6 +419,12 @@ begin
 end;
 $function$;
 grant execute on function public.accept_my_invites() to authenticated;
+
+update public.households
+set settings = jsonb_set(
+  jsonb_set(coalesce(settings,'{}'::jsonb), '{user_label}', '"Renan"'::jsonb, true),
+  '{partner_label}', '"Leticia"'::jsonb, true
+);
 
 -- Retire the old brush test catalog without deleting its history.
 update public.products
