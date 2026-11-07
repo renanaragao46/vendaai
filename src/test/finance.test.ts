@@ -67,8 +67,8 @@ describe("financial ledger", () => {
     expect(wealth.assetValue).toBe(10000);
     expect(wealth.assetLiabilities).toBe(1000);
     expect(wealth.debtTotal).toBe(2000);
-    expect(wealth.cashTotal).toBe(170);
-    expect(wealth.netWorth).toBe(7170);
+    expect(wealth.cashTotal).toBe(250);
+    expect(wealth.netWorth).toBe(7250);
   });
 
   it("uses the same open-debt rule in every dashboard", () => {
