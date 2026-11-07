@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, ArrowDownRight, ArrowUpRight, BookOpen, BriefcaseBusiness, CalendarDays, CheckCircle2, ChevronRight, CircleDollarSign, CreditCard, FileText, LayoutDashboard, ListTodo, LogOut, Map, Plus, Search, Settings, ShieldCheck, Store, Target, Trash2, Wallet, X, Pencil, Download, Network, RefreshCw, ChevronDown, BarChart3, AlertTriangle, TrendingUp } from "lucide-react";
+import { Activity, ArrowDownRight, ArrowUpRight, BookOpen, BriefcaseBusiness, CalendarDays, CheckCircle2, ChevronRight, Compass, Flag, CircleDollarSign, CreditCard, FileText, LayoutDashboard, ListTodo, LogOut, Map, Plus, Search, Settings, ShieldCheck, Store, Target, Trash2, Wallet, X, Pencil, Download, Network, RefreshCw, ChevronDown, BarChart3, AlertTriangle, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
@@ -209,7 +209,7 @@ function FinanceDashboard({householdId,onQuickTransaction}:{householdId:string;o
   {due>0&&<Card className="border-rose-400/30 bg-rose-400/5 p-4"><p className="text-sm font-semibold text-rose-200">Atenção: {due} dívida(s) com vencimento hoje ou anterior</p><p className="mt-1 text-xs text-muted-foreground">Confira o vencimento e atualize o status após o pagamento.</p></Card>}
  </div>;
 }
-function DirectionWorkspace({householdId,section}:{householdId:string;section:"home"|"milestones"|"roadmap"}){
+function DirectionWorkspace({householdId,section}:{householdId:string;section:string}){
  const assets=useQuery({queryKey:["pv","direction_assets",householdId],queryFn:async()=>{const {data,error}=await (supabase as any).from("assets").select("id,name,kind,class,value,status,documented").eq("household_id",householdId).eq("archived",false);if(error)throw error;return data??[]}});
  const debts=useQuery({queryKey:["pv","direction_debts",householdId],queryFn:async()=>{const {data,error}=await (supabase as any).from("debts").select("id,creditor,balance_informed,status").eq("household_id",householdId).eq("archived",false);if(error)throw error;return data??[]}});
  const confirmedAssets=(assets.data??[]).filter((a:any)=>a.status==="confirmado"&&String(a.kind||"").toLowerCase().includes("ativo"));
