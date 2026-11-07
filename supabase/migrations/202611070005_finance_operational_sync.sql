@@ -420,12 +420,6 @@ end;
 $function$;
 grant execute on function public.accept_my_invites() to authenticated;
 
-update public.households
-set settings = jsonb_set(
-  jsonb_set(coalesce(settings,'{}'::jsonb), '{user_label}', '"Renan"'::jsonb, true),
-  '{partner_label}', '"Leticia"'::jsonb, true
-);
-
 -- Retire the old brush test catalog without deleting its history.
 update public.products
 set status = 'pausado',
