@@ -56,6 +56,10 @@ begin
   end loop;
 end $$;
 
+-- Rent allocation is a profitability cost, not a per-shift cash payment.
+delete from public.transactions
+where operation like 'pv:auto:99_uber_cost:%:aluguel';
+
 -- The source record is the canonical record; its finance entry is a durable, unique projection.
 with duplicates as (
   select id, row_number() over (
@@ -298,6 +302,93 @@ create trigger sync_mimora_income_to_finance
 after insert or update or delete on public.ecommerce_daily_metrics
 for each row execute function public.sync_household_operational_income();
 
+
+create or replace function public.sync_uber_costs_to_finance()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $function$
+declare
+  v_household_id uuid;
+  v_source_id uuid;
+  v_date date;
+  v_account_id uuid;
+  v_item record;
+  v_operation text;
+begin
+  if TG_OP = 'DELETE' then
+    v_household_id := OLD.household_id;
+    v_source_id := OLD.id;
+    delete from public.transactions
+      where household_id = v_household_id
+        and operation like 'pv:auto:99_uber_cost:' || v_source_id::text || ':%';
+    return OLD;
+  end if;
+
+  v_household_id := NEW.household_id;
+  v_source_id := NEW.id;
+  v_date := coalesce(NEW.date,current_date);
+
+  select id into v_account_id
+    from public.accounts
+    where household_id = v_household_id and archived = false
+      and (name ilike '%renan%' or (holder = 'usuario' and type = 'pessoal'))
+    order by case when name ilike '%renan%' then 0 else 1 end, created_at
+    limit 1;
+
+  for v_item in
+    select * from (values
+      ('combustivel','Combustível',coalesce(NEW.fuel_cost,0)::numeric),
+      ('pedagios','Pedágios',coalesce(NEW.tolls,0)::numeric),
+      ('lavagem','Lavagem',coalesce(NEW.wash,0)::numeric),
+      ('manutencao','Manutenção',coalesce(NEW.maintenance,0)::numeric),
+      ('outros','Outros custos',coalesce(NEW.other_costs,0)::numeric)
+    ) as costs(code,label,amount)
+  loop
+    v_operation := 'pv:auto:99_uber_cost:' || v_source_id::text || ':' || v_item.code;
+
+    if v_item.amount <= 0 then
+      delete from public.transactions
+        where household_id = v_household_id and operation = v_operation;
+      continue;
+    end if;
+
+    if v_account_id is null then
+      raise exception 'Conta pessoal do Renan não encontrada para registrar os custos do Uber/99.';
+    end if;
+
+    insert into public.transactions(
+      household_id,date,amount,direction,description,category,account_id,holder,
+      operation,status,nature,notes
+    ) values (
+      v_household_id,v_date,round(v_item.amount,2),'saida',
+      'Uber/99 · ' || v_item.label || ' · turno ' || v_date::text,
+      v_item.label,v_account_id,'usuario',v_operation,'confirmado','pessoal',
+      'Despesa automática vinculada ao turno Uber/99 (' || v_source_id::text || '). Edite o turno para ajustar este lançamento.'
+    )
+    on conflict (household_id,operation) where operation like 'pv:auto:%'
+    do update set
+      date = excluded.date,
+      amount = excluded.amount,
+      direction = 'saida',
+      description = excluded.description,
+      category = excluded.category,
+      account_id = excluded.account_id,
+      holder = 'usuario',
+      status = 'confirmado',
+      nature = 'pessoal',
+      notes = excluded.notes;
+  end loop;
+
+  return NEW;
+end;
+$function$;
+
+drop trigger if exists sync_driving_costs_to_finance on public.driving_sessions;
+create trigger sync_driving_costs_to_finance
+after insert or update or delete on public.driving_sessions
+for each row execute function public.sync_uber_costs_to_finance();
 
 -- A user belongs to one shared life workspace. Accept only one pending invite.
 create or replace function public.accept_my_invites()
