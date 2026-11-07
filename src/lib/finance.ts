@@ -92,11 +92,12 @@ export function calculateWealthTotals(
   const confirmedLiabilities = assets.filter(
     (asset) => asset.status === "confirmado" && normalizeStatus(asset.kind) === "passivo",
   );
-  const assetValue = confirmedAssets.reduce((total, asset) => total + Number(asset.value ?? 0), 0);
-  const assetLiabilities = confirmedLiabilities.reduce((total, asset) => total + Number(asset.value ?? 0), 0);
-  const debtTotal = debts
-    .filter(isDebtOpen)
-    .reduce((total, debt) => total + Number(debt.balance_informed ?? 0), 0);
+  const assetValueCents = confirmedAssets.reduce((total, asset) => total + moneyToCents(asset.value), 0);
+  const assetLiabilitiesCents = confirmedLiabilities.reduce((total, asset) => total + moneyToCents(asset.value), 0);
+  const debtTotalCents = debts.filter(isDebtOpen).reduce((total, debt) => total + moneyToCents(debt.balance_informed), 0);
+  const assetValue = assetValueCents / 100;
+  const assetLiabilities = assetLiabilitiesCents / 100;
+  const debtTotal = debtTotalCents / 100;
   const cashTotal = calculateCashTotal(accounts, transactions);
 
   return {
