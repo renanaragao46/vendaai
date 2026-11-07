@@ -23,6 +23,7 @@ export function calculateAccountBalances<T extends FinancialAccount>(
 ) {
   return accounts.map((account) => {
     let cents = account.initial_status === "confirmado" ? moneyToCents(account.initial_balance) : 0;
+    let hasConfirmedMovement = false;
 
     for (const movement of transactions) {
       if (movement.status !== "confirmado") continue;
@@ -30,15 +31,28 @@ export function calculateAccountBalances<T extends FinancialAccount>(
 
       if (movement.direction === "entrada" && movement.account_id === account.id) {
         cents += amount;
+        hasConfirmedMovement = true;
       } else if (movement.direction === "saida" && movement.account_id === account.id) {
         cents -= amount;
+        hasConfirmedMovement = true;
       } else if (movement.direction === "transferencia") {
-        if (movement.account_id === account.id) cents -= amount;
-        if (movement.transfer_account_id === account.id) cents += amount;
+        if (movement.account_id === account.id) {
+          cents -= amount;
+          hasConfirmedMovement = true;
+        }
+        if (movement.transfer_account_id === account.id) {
+          cents += amount;
+          hasConfirmedMovement = true;
+        }
       }
     }
 
-    return { ...account, balance: cents / 100, balance_status: account.initial_status === "confirmado" ? "confirmado" : cents !== 0 ? "parcial" : "a_confirmar" };
+    const balance_status = account.initial_status === "confirmado"
+      ? "confirmado"
+      : hasConfirmedMovement
+        ? "parcial"
+        : "a_confirmar";
+    return { ...account, balance: cents / 100, balance_status };
   });
 }
 
