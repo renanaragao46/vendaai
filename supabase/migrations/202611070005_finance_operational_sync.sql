@@ -244,6 +244,24 @@ end;
 $function$;
 grant execute on function public.accept_my_invites() to authenticated;
 
+-- Retire the old brush test catalog without deleting its history.
+update public.products
+set status = 'pausado',
+    notes = concat_ws(E'\n', nullif(notes,''), 'Produto de catálogo histórico; não considerar ativo na operação sazonal atual.')
+where name in (
+  'Escova Alisadora Multifuncional — MIMORA',
+  'Escova 3 em 1 — MIMORA',
+  'Escova 5 em 1 — MIMORA'
+);
+
+update public.notes
+set body = 'Loja online em reposicionamento para produtos sazonais/Natal. Atualizar o catálogo conforme os produtos realmente ativos. Contar como receita somente o repasse líquido efetivamente recebido; acompanhar anúncios, pedidos aprovados, cancelamentos e margem sem presumir vendas.'
+where title = 'MIMORA — situação inicial';
+
+update public.project_nodes
+set description = 'E-commerce em reposicionamento sazonal; registrar somente pedidos e repasses efetivamente confirmados.'
+where label = 'MIMORA / Kaiross';
+
 -- Normalize the visible labels stored with the shared workspace.
 update public.households
 set settings = jsonb_set(
