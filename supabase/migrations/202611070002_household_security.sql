@@ -4,14 +4,14 @@ drop policy if exists "members manage invites" on public.household_invites;
 drop policy if exists "members update household" on public.households;
 drop policy if exists "owner updates household" on public.households;
 create policy "owner updates household" on public.households for update to authenticated
-using (exists (select 1 from public.household_members m where m.household_id = id and m.user_id = auth.uid() and m.role = 'owner'))
-with check (exists (select 1 from public.household_members m where m.household_id = id and m.user_id = auth.uid() and m.role = 'owner'));
+using (exists (select 1 from public.household_members m where m.household_id = households.id and m.user_id = auth.uid() and m.role = 'owner'))
+with check (exists (select 1 from public.household_members m where m.household_id = households.id and m.user_id = auth.uid() and m.role = 'owner'));
 create policy "owner reads invites" on public.household_invites for select to authenticated
-using (exists (select 1 from public.household_members m where m.household_id = household_id and m.user_id = auth.uid() and m.role = 'owner'));
+using (exists (select 1 from public.household_members m where m.household_id = household_invites.household_id and m.user_id = auth.uid() and m.role = 'owner'));
 create policy "owner creates invites" on public.household_invites for insert to authenticated
-with check (exists (select 1 from public.household_members m where m.household_id = household_id and m.user_id = auth.uid() and m.role = 'owner'));
+with check (exists (select 1 from public.household_members m where m.household_id = household_invites.household_id and m.user_id = auth.uid() and m.role = 'owner'));
 create policy "owner deletes invites" on public.household_invites for delete to authenticated
-using (exists (select 1 from public.household_members m where m.household_id = household_id and m.user_id = auth.uid() and m.role = 'owner'));
+using (exists (select 1 from public.household_members m where m.household_id = household_invites.household_id and m.user_id = auth.uid() and m.role = 'owner'));
 create or replace function public.enforce_two_household_members()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare n integer;
