@@ -1,146 +1,30 @@
 import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  LayoutDashboard,
-  MessagesSquare,
-  KanbanSquare,
-  Users,
-  Package,
-  BookOpen,
-  Bot,
-  Settings,
-  LogOut,
-  Sparkles,
-} from "lucide-react";
+import { LayoutDashboard, LogOut, ShieldCheck, Wallet, Target, BriefcaseBusiness, BookOpen, Network } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useOrg, ROLE_LABEL } from "@/lib/org";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { useWorkspace } from "@/lib/workspace";
 
 const NAV = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/conversas", label: "Conversas", icon: MessagesSquare },
-  { to: "/leads", label: "CRM / Leads", icon: KanbanSquare },
-  { to: "/contatos", label: "Contatos", icon: Users },
-  { to: "/produtos", label: "Produtos", icon: Package },
-  { to: "/conhecimento", label: "Conhecimento", icon: BookOpen },
-  { to: "/agente", label: "Agente IA", icon: Bot },
-  { to: "/configuracoes", label: "Configurações", icon: Settings },
+  { to: "/dashboard", label: "Visão geral", icon: LayoutDashboard },
 ] as const;
 
 export function AppShell() {
-  const { org, email, role } = useOrg();
+  const { workspace, email, role } = useWorkspace();
   const navigate = useNavigate();
   const qc = useQueryClient();
-
   const signOut = async () => {
-    await qc.cancelQueries();
-    qc.clear();
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
+    await qc.cancelQueries(); qc.clear(); await supabase.auth.signOut(); navigate({ to: "/auth", replace: true });
   };
-
-  return (
-    <SidebarProvider>
-      <Sidebar collapsible="icon">
-        <SidebarHeader className="px-3 py-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-              <Sparkles className="h-4 w-4" />
-            </div>
-            <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-              <p className="font-display text-sm font-semibold text-sidebar-accent-foreground">VendaAI</p>
-              <p className="truncate text-xs text-sidebar-foreground/70">{org.name}</p>
-            </div>
-          </div>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {NAV.map((item) => (
-                  <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton asChild tooltip={item.label}>
-                      <Link
-                        to={item.to}
-                        preload="intent"
-                        activeProps={{ "data-active": true } as Record<string, unknown>}
-                      >
-                        <item.icon />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-        <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton onClick={signOut} tooltip="Sair">
-                <LogOut />
-                <span>Sair</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      </Sidebar>
-      <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
-          <SidebarTrigger />
-          <div className="flex-1" />
-          <Badge variant="secondary" className="hidden sm:inline-flex">
-            {ROLE_LABEL[role]}
-          </Badge>
-          <DropdownMenu>
-            <DropdownMenuTrigger className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                  {(email ?? "?").slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel className="font-normal">
-                <p className="text-sm">{email}</p>
-                <p className="text-xs text-muted-foreground">{org.name}</p>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/configuracoes" preload="intent">Configurações</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={signOut}>Sair</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </header>
-        <main className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6 lg:p-8">
-          <Outlet />
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
-  );
+  return <div className="min-h-screen bg-background lg:grid lg:grid-cols-[250px_1fr]">
+    <aside className="border-b bg-[oklch(0.19_0.035_195)] text-white lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:p-4">
+      <div className="flex items-center gap-3 px-4 py-4 lg:px-2"><span className="grid h-10 w-10 place-items-center rounded-xl bg-primary font-bold">PV</span><div><p className="font-display font-bold tracking-wide">PROJETO DE VIDA</p><p className="text-xs text-white/60">Espaço compartilhado</p></div></div>
+      <div className="mx-2 mt-2 rounded-xl bg-white/10 p-3"><p className="text-xs text-white/60">WORKSPACE</p><p className="mt-1 truncate text-sm font-semibold">{workspace.name}</p><p className="mt-1 text-xs text-white/60">{role === "owner" ? "Administrador" : "Membro"}</p></div>
+      <nav className="mt-5 flex gap-2 overflow-x-auto px-2 lg:flex-col">
+        {NAV.map((item) => <Link key={item.to} to={item.to} className="flex shrink-0 items-center gap-3 rounded-lg px-3 py-3 text-sm text-white/80 hover:bg-white/10 hover:text-white" activeProps={{ className: "bg-white/15 text-white font-semibold" }}><item.icon className="h-4 w-4" />{item.label}</Link>)}
+      </nav>
+      <div className="mt-4 hidden px-3 text-xs text-white/50 lg:block">Módulos serão liberados progressivamente conforme a estrutura de dados for validada.</div>
+      <div className="mt-4 flex items-center justify-between border-t border-white/10 px-4 py-4 text-xs text-white/70 lg:absolute lg:bottom-0 lg:left-0 lg:right-0"><span className="max-w-[170px] truncate">{email}</span><button onClick={signOut} className="rounded-md p-2 hover:bg-white/10" aria-label="Sair"><LogOut className="h-4 w-4" /></button></div>
+    </aside>
+    <div className="min-w-0"><header className="flex h-14 items-center justify-between border-b bg-card/70 px-5"><p className="text-sm font-medium">Painel de gestão</p><span className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4 text-primary" /> Sessão protegida</span></header><main className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8"><Outlet /></main></div>
+  </div>;
 }
