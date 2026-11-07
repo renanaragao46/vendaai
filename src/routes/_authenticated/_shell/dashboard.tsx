@@ -39,39 +39,25 @@ const MODULES:ModuleDef[]=[
  {key:"meetings",title:"Reuniões semanais",table:"meetings",description:"Ata do casal, pauta, decisões e ações. Use para revisar caixa, dívidas, operações e prioridades.",fields:[F("date","Data","date",true),F("kind","Tipo (semanal/mensal)"),F("minutes","Ata / resumo","textarea"),F("decisions","Decisões","textarea")],display:["date","kind","minutes","decisions"]},
 ];
 const NAV=[
- {key:"overview",label:"Visão geral",icon:LayoutDashboard},
- {key:"map",label:"Mapa mental",icon:Network},
- {key:"accounts",label:"Finanças",icon:Wallet},
- {key:"transactions",label:"Movimentações",icon:ArrowUpRight},
- {key:"debts",label:"Dívidas",icon:CreditCard},
- {key:"driving_sessions",label:"99 / Uber",icon:Activity},
- {key:"beverage_events",label:"Venda de bebidas",icon:Store},
- {key:"ecommerce_daily_metrics",label:"MIMORA · Loja",icon:BriefcaseBusiness},
- {key:"products",label:"Produtos e lojas",icon:Store},
- {key:"six_month_phases",label:"Plano 6 meses",icon:Target},
- {key:"tasks",label:"Tarefas e rotina",icon:ListTodo},
- {key:"notes",label:"Notas",icon:FileText},
- {key:"knowledge_lessons",label:"Biblioteca",icon:BookOpen},
- 
- {key:"decisions",label:"Decisões",icon:CheckCircle2},
- {key:"meetings",label:"Reuniões",icon:CalendarDays},
- {key:"assets",label:"Patrimônio",icon:CircleDollarSign},
- {key:"budgets",label:"Orçamento",icon:Wallet},
+ {key:"overview",label:"Minha vida",icon:LayoutDashboard},
+ {key:"uber",label:"99 / Uber",icon:Activity},
+ {key:"mimora",label:"MIMORA",icon:BriefcaseBusiness},
+ {key:"beverages",label:"Venda de bebidas",icon:Store},
+ {key:"finance",label:"Finanças",icon:Wallet},
+ {key:"personal",label:"Vida pessoal",icon:Target},
+ {key:"knowledge",label:"Conhecimento",icon:BookOpen},
+ {key:"map",label:"Mapa estratégico",icon:Network},
  {key:"settings",label:"Acesso e configurações",icon:Settings},
 ] as const;
 const NAV_GROUPS=[
  {label:"CENTRO DE COMANDO",keys:["overview","map"]},
- {label:"MINHAS ÁREAS",keys:["driving_sessions","ecommerce_daily_metrics","beverage_events"]},
- {label:"DINHEIRO DA VIDA",keys:["accounts","transactions","debts","assets","budgets"]},
- {label:"PLANEJAR E EVOLUIR",keys:["six_month_phases","tasks","notes","knowledge_lessons","decisions","meetings"]},
+ {label:"ESPAÇOS DE TRABALHO",keys:["uber","mimora","beverages"]},
+ {label:"VIDA E PATRIMÔNIO",keys:["finance","personal","knowledge"]},
  {label:"ADMINISTRAÇÃO",keys:["settings"]},
 ] as const;
 const NAV_TONES:Record<string,string>={
- overview:"text-sky-300",map:"text-violet-300",
- accounts:"text-cyan-300",transactions:"text-emerald-300",debts:"text-rose-300",assets:"text-indigo-300",budgets:"text-teal-300",
- driving_sessions:"text-amber-300",beverage_events:"text-orange-300",ecommerce_daily_metrics:"text-pink-300",products:"text-fuchsia-300",
- six_month_phases:"text-violet-300",tasks:"text-lime-300",
- notes:"text-slate-300",knowledge_lessons:"text-teal-300",decisions:"text-emerald-300",meetings:"text-blue-300",settings:"text-slate-300",
+ overview:"text-sky-300",map:"text-violet-300",uber:"text-amber-300",mimora:"text-pink-300",
+ beverages:"text-orange-300",finance:"text-cyan-300",personal:"text-violet-300",knowledge:"text-teal-300",settings:"text-slate-300",
 };
 const brl=(n:number)=>Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const dateNow=()=>new Date().toLocaleDateString("en-CA",{timeZone:"America/Sao_Paulo"});
@@ -113,9 +99,45 @@ function Dashboard(){
   </aside>
   <section className="min-w-0 space-y-5">
    <div className="flex items-center justify-between gap-3 lg:hidden"><Button variant="outline" size="sm" onClick={()=>setMobileNav(!mobileNav)}>{mobileNav?"Fechar menu":"Abrir menu"}</Button><span className="truncate text-xs text-muted-foreground">{email}</span></div>
-   {tab==="overview"?<Overview summary={summary} loading={loading} tasks={tasks.data??[]} onNavigate={setTab}/>:tab==="map"?<MindMap householdId={workspace.id}/>:tab==="settings"?<SettingsPanel householdId={workspace.id} userId={userId} email={email} role={role}/>:def?<CrudSection key={`${def.key}-${tab=== "transactions"?transactionAction:""}`} def={def} householdId={workspace.id} userId={userId} onNavigate={setTab} onQuickTransaction={(kind:string)=>{setTransactionAction(kind);setTab("transactions")}} initialAction={tab==="transactions"?transactionAction:null} onActionConsumed={()=>setTransactionAction(null)}/>:<Card className="p-6">Módulo indisponível.</Card>}
+   {tab==="overview"?<Overview summary={summary} loading={loading} tasks={tasks.data??[]} onNavigate={setTab}/>:tab==="map"?<MindMap householdId={workspace.id}/>:tab==="settings"?<SettingsPanel householdId={workspace.id} userId={userId} email={email} role={role}/>:["uber","mimora","beverages","finance","personal","knowledge"].includes(tab)?<AreaWorkspace key={tab} area={tab} householdId={workspace.id} userId={userId} onNavigate={setTab} onQuickTransaction={(kind:string)=>{setTransactionAction(kind);setTab("finance")}}/>:def?<CrudSection key={`${def.key}-${tab=== "transactions"?transactionAction:""}`} def={def} householdId={workspace.id} userId={userId} onNavigate={setTab} onQuickTransaction={(kind:string)=>{setTransactionAction(kind);setTab("finance")}} initialAction={tab==="transactions"?transactionAction:null} onActionConsumed={()=>setTransactionAction(null)}/>:<Card className="p-6">Módulo indisponível.</Card>}
   </section>
  </div>
+}
+function AreaWorkspace({area,householdId,userId,onNavigate,onQuickTransaction}:{area:string;householdId:string;userId:string;onNavigate:(s:string)=>void;onQuickTransaction:(kind:string)=>void}){
+ const [section,setSection]=useState("home");
+ const configs:Record<string,{title:string;eyebrow:string;description:string;color:string;scope:string;tabs:{key:string;label:string;icon:any;module?:string}[]}> = {
+  uber:{title:"99 / Uber",eyebrow:"OPERAÇÃO DE MOBILIDADE",description:"Seu centro de trabalho nas plataformas: turnos, custos, metas, desempenho e regras operacionais.",color:"amber",scope:"99",tabs:[{key:"home",label:"Painel",icon:LayoutDashboard},{key:"turnos",label:"Turnos",icon:Activity,module:"driving_sessions"},{key:"regras",label:"Regras do 99",icon:ShieldCheck,module:"rules"},{key:"tarefas",label:"Ações",icon:ListTodo,module:"tasks"},{key:"decisoes",label:"Decisões",icon:CheckCircle2,module:"decisions"}]},
+  mimora:{title:"MIMORA",eyebrow:"OPERAÇÃO DE E-COMMERCE",description:"Produtos, tráfego, conversas, pedidos aprovados e margem. Tudo que pertence à loja fica aqui.",color:"pink",scope:"MIMORA",tabs:[{key:"home",label:"Painel",icon:LayoutDashboard},{key:"anuncios",label:"Anúncios e vendas",icon:BarChart3,module:"ecommerce_daily_metrics"},{key:"produtos",label:"Produtos",icon:Store,module:"products"},{key:"regras",label:"Regras da loja",icon:ShieldCheck,module:"rules"},{key:"tarefas",label:"Ações",icon:ListTodo,module:"tasks"},{key:"decisoes",label:"Decisões",icon:CheckCircle2,module:"decisions"}]},
+  beverages:{title:"Venda de bebidas",eyebrow:"OPERAÇÃO COMERCIAL",description:"Eventos, estoque, vendas, perdas, custos e lucro por operação.",color:"orange",scope:"BEBIDAS",tabs:[{key:"home",label:"Painel",icon:LayoutDashboard},{key:"eventos",label:"Eventos e vendas",icon:Store,module:"beverage_events"},{key:"regras",label:"Regras da operação",icon:ShieldCheck,module:"rules"},{key:"tarefas",label:"Ações",icon:ListTodo,module:"tasks"},{key:"decisoes",label:"Decisões",icon:CheckCircle2,module:"decisions"}]},
+  finance:{title:"Finanças",eyebrow:"CENTRAL FINANCEIRA",description:"Contas, entradas, saídas, transferências, dívidas, orçamento e patrimônio.",color:"cyan",scope:"FINANÇAS",tabs:[{key:"home",label:"Painel",icon:LayoutDashboard},{key:"contas",label:"Contas e caixas",icon:Wallet,module:"accounts"},{key:"movimentos",label:"Movimentações",icon:ArrowUpRight,module:"transactions"},{key:"dividas",label:"Dívidas",icon:CreditCard,module:"debts"},{key:"patrimonio",label:"Patrimônio",icon:CircleDollarSign,module:"assets"},{key:"orcamento",label:"Orçamento",icon:Target,module:"budgets"},{key:"regras",label:"Regras financeiras",icon:ShieldCheck,module:"rules"}]},
+  personal:{title:"Vida pessoal",eyebrow:"ROTINA E RELACIONAMENTO",description:"Compromissos, hábitos, tarefas e decisões que sustentam a execução do plano.",color:"violet",scope:"VIDA",tabs:[{key:"home",label:"Painel",icon:LayoutDashboard},{key:"tarefas",label:"Rotina e tarefas",icon:ListTodo,module:"tasks"},{key:"reunioes",label:"Revisões",icon:CalendarDays,module:"meetings"},{key:"notas",label:"Notas",icon:FileText,module:"notes"},{key:"regras",label:"Princípios pessoais",icon:ShieldCheck,module:"rules"}]},
+  knowledge:{title:"Conhecimento",eyebrow:"BIBLIOTECA E APLICAÇÃO",description:"Estudos, aulas, ideias e aprendizados transformados em ações práticas.",color:"teal",scope:"CONHECIMENTO",tabs:[{key:"home",label:"Painel",icon:LayoutDashboard},{key:"biblioteca",label:"Biblioteca",icon:BookOpen,module:"knowledge_lessons"},{key:"notas",label:"Anotações",icon:FileText,module:"notes"}]},
+ };
+ const cfg=configs[area];const active=cfg.tabs.find(t=>t.key===section)||cfg.tabs[0];const moduleDef=active.module?MODULES.find(m=>m.key===active.module):undefined;
+ const accent:Record<string,string>={amber:"border-amber-400/30 bg-amber-400/10 text-amber-200",pink:"border-pink-400/30 bg-pink-400/10 text-pink-200",orange:"border-orange-400/30 bg-orange-400/10 text-orange-200",cyan:"border-cyan-400/30 bg-cyan-400/10 text-cyan-200",violet:"border-violet-400/30 bg-violet-400/10 text-violet-200",teal:"border-teal-400/30 bg-teal-400/10 text-teal-200"};
+ return <div className="space-y-5">
+  <section className={`rounded-2xl border p-5 sm:p-7 ${accent[cfg.color]}`}>
+   <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[10px] font-bold tracking-[.2em] opacity-75">{cfg.eyebrow}</p><h1 className="mt-2 font-display text-3xl font-bold text-white">{cfg.title}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">{cfg.description}</p></div><Button variant="outline" size="sm" onClick={()=>onNavigate("overview")}>Visão geral da vida</Button></div>
+  </section>
+  <nav className="flex gap-2 overflow-x-auto pb-1">{cfg.tabs.map(t=><button key={t.key} onClick={()=>setSection(t.key)} className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold transition ${section===t.key?"border-slate-500 bg-slate-800 text-white shadow":"border-slate-700/70 bg-[#111D31] text-slate-400 hover:text-white"}`}><t.icon className="h-4 w-4"/>{t.label}</button>)}</nav>
+  {section==="home"?<AreaLanding area={area} config={cfg} onSelect={setSection} onQuickTransaction={onQuickTransaction}/>:moduleDef?<CrudSection key={area+section} def={moduleDef} householdId={householdId} userId={userId} onNavigate={onNavigate} onQuickTransaction={onQuickTransaction} scope={moduleDef.key==="rules"?cfg.scope:undefined}/>:null}
+ </div>;
+}
+function AreaLanding({area,config,onSelect,onQuickTransaction}:{area:string;config:any;onSelect:(s:string)=>void;onQuickTransaction:(kind:string)=>void}){
+ const tiles=config.tabs.filter((t:any)=>t.key!=="home");
+ const highlights:Record<string,{title:string;items:string[];action:string}>={
+  uber:{title:"Seu turno, seus números",items:["Registre início e fim; a duração é calculada automaticamente.","Acompanhe faturamento, combustível, custos e resultado líquido.","Consulte regras e metas sem sair do ambiente 99."],action:"turnos"},
+  mimora:{title:"Gestão da loja em um só lugar",items:["Acompanhe investimento em anúncios e conversas.","Separe pedidos de pagamentos realmente aprovados.","Analise contribuição, CAC e retorno antes de aumentar orçamento."],action:"anuncios"},
+  beverages:{title:"Controle por evento",items:["Cadastre produtos, quantidades, perdas e estoque restante.","Calcule receita, custo consumido e lucro do evento.","Compare operações antes de aumentar o investimento."],action:"eventos"},
+  finance:{title:"Dinheiro organizado por finalidade",items:["Cada conta mantém seu próprio saldo.","Transferências não viram receita nem despesa.","Dívidas e patrimônio ficam separados do fluxo de caixa."],action:"contas"},
+  personal:{title:"Execução pessoal",items:["Organize tarefas por prazo e prioridade.","Registre revisões e decisões importantes.","Mantenha os princípios pessoais dentro desta área."],action:"tarefas"},
+  knowledge:{title:"Aprender para executar",items:["Guarde resumos e conceitos importantes.","Registre como aplicar cada aprendizado.","Transforme estudo em ações concretas."],action:"biblioteca"},
+ };
+ const h=highlights[area];
+ return <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(260px,.7fr)]">
+  <Card className="p-5 sm:p-6"><p className="text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">VISÃO DO ESPAÇO</p><h2 className="mt-2 font-display text-xl font-semibold">{h.title}</h2><ul className="mt-4 space-y-3">{h.items.map((item:string,i:number)=><li key={i} className="flex gap-3 text-sm leading-6 text-muted-foreground"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary"/>{item}</li>)}</ul>{area==="finance"&&<div className="mt-5 flex flex-wrap gap-2"><Button onClick={()=>onQuickTransaction("income")}>Registrar ganho</Button><Button variant="outline" onClick={()=>onQuickTransaction("expense")}>Registrar gasto</Button></div>}<Button className="mt-5" variant="secondary" onClick={()=>onSelect(h.action)}>Abrir área principal <ChevronRight className="ml-2 h-4 w-4"/></Button></Card>
+  <Card className="p-5"><p className="text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">SEÇÕES DESTE ESPAÇO</p><div className="mt-3 space-y-2">{tiles.map((t:any)=><button key={t.key} onClick={()=>onSelect(t.key)} className="flex w-full items-center gap-3 rounded-xl border bg-card p-3 text-left transition hover:border-primary/50 hover:bg-muted/50"><t.icon className="h-4 w-4 text-primary"/><span className="flex-1 text-sm font-medium">{t.label}</span><ChevronRight className="h-4 w-4 text-muted-foreground"/></button>)}</div></Card>
+ </div>;
 }
 function Overview({summary,loading,tasks,onNavigate}:{summary:any;loading:boolean;tasks:any[];onNavigate:(s:string)=>void}){
  const cards=[{label:"Receitas do mês",value:brl(summary.income),icon:ArrowUpRight},{label:"Despesas do mês",value:brl(summary.expenses),icon:ArrowDownRight},{label:"Resultado registrado",value:brl(summary.net),icon:Wallet},{label:"Saldo de dívidas confirmado",value:brl(summary.debt),icon:CreditCard},{label:"Caixa conciliado",value:brl(summary.cash),icon:Wallet},{label:"Patrimônio líquido estimado",value:brl(summary.netWorth),icon:CircleDollarSign}];
@@ -129,7 +151,7 @@ function Overview({summary,loading,tasks,onNavigate}:{summary:any;loading:boolea
   <p className="text-[11px] leading-5 text-muted-foreground">Importante: os indicadores usam apenas registros cadastrados. Transferências não entram como receita/despesa; dívidas usam o saldo informado; dados marcados como estimativa ou a confirmar não são tratados como realidade confirmada.</p>
  </div>
 }
-function CrudSection({def,householdId,userId,onNavigate,onQuickTransaction,initialAction,onActionConsumed}:{def:ModuleDef;householdId:string;userId:string;onNavigate?:(s:string)=>void;onQuickTransaction?:(kind:string)=>void;initialAction?:string|null;onActionConsumed?:()=>void}){
+function CrudSection({def,householdId,userId,onNavigate,onQuickTransaction,initialAction,onActionConsumed,scope}:{def:ModuleDef;householdId:string;userId:string;onNavigate?:(s:string)=>void;onQuickTransaction?:(kind:string)=>void;initialAction?:string|null;onActionConsumed?:()=>void;scope?:string}){
  const qc=useQueryClient();
  const initialForm:Record<string,any>=initialAction?{date:dateNow(),direction:initialAction==="expense"?"saida":"entrada",amount:"",description:"",category:"",holder:"usuario",account_id:"",operation:"",status:"confirmado",nature:"pessoal",notes:""}:{};
  const [editing,setEditing]=useState<any|null>(initialAction?{}:null); const [search,setSearch]=useState(""); const [form,setForm]=useState<Record<string,any>>(initialForm);
@@ -144,7 +166,10 @@ function CrudSection({def,householdId,userId,onNavigate,onQuickTransaction,initi
  if(editing?.id){const {error}=await (supabase as any).from(def.table).update(payload).eq("id",editing.id).eq("household_id",householdId);if(error)throw error;}else{payload.created_by=userId;const {error}=await (supabase as any).from(def.table).insert(payload);if(error)throw error;}},onSuccess:()=>{toast.success("Registro salvo.");qc.invalidateQueries({queryKey:["pv",def.table,householdId]});qc.invalidateQueries({queryKey:["pv"]});setEditing(null);setForm({});onActionConsumed?.();},onError:(e:any)=>toast.error(e.message||"Não foi possível salvar.")});
  const moveTask=async(taskId:string,status:string)=>{const {error}=await (supabase as any).from("tasks").update({status}).eq("id",taskId).eq("household_id",householdId);if(error){toast.error(error.message);return;}toast.success(status==="done"?"Tarefa concluída.":"Tarefa movida.");qc.invalidateQueries({queryKey:["pv","tasks",householdId]});qc.invalidateQueries({queryKey:["pv"]});};
  const remove=async(row:any)=>{if(!window.confirm("Excluir este registro? Esta ação não pode ser desfeita."))return;const {error}=await (supabase as any).from(def.table).delete().eq("id",row.id).eq("household_id",householdId);if(error)toast.error(error.message);else{toast.success("Registro excluído.");qc.invalidateQueries({queryKey:["pv",def.table,householdId]});qc.invalidateQueries({queryKey:["pv"]});}};
- const rows=(query.data??[]).filter((r:any)=>!search||def.display.some(k=>cleanValue(r[k]).toLowerCase().includes(search.toLowerCase()))||def.fields.some(f=>cleanValue(r[f.key]).toLowerCase().includes(search.toLowerCase())));
+ const rows=(query.data??[]).filter((r:any)=>{
+  if(def.table==="rules"&&scope){const title=String(r.title||"").trim().toUpperCase();const aliases:Record<string,string[]>={"99":["99","UBER"],"MIMORA":["MIMORA"],"BEBIDAS":["BEBIDAS","BEBIDA","ESTÁDIO"],"FINANÇAS":["FINANÇAS","FINANCEIRO","DINHEIRO"],"VIDA":["VIDA","PESSOAL","ROTINA"]};const allowed=aliases[scope]||[scope];if(!allowed.some(a=>title.startsWith(a+":")||title.startsWith(a+" |")||title.startsWith(a+" —")||title===a))return false;}
+  return !search||def.display.some(k=>cleanValue(r[k]).toLowerCase().includes(search.toLowerCase()))||def.fields.some(f=>cleanValue(r[f.key]).toLowerCase().includes(search.toLowerCase()));
+ });
  const categoryOf=(row:any)=>{
   if(def.table==="rules"){const title=String(row.title||"");return title.split(/[:|—–-]/)[0].trim().toUpperCase()||"GERAL";}
   if(def.table==="driving_sessions")return String(row.platform||"Plataforma não informada").toUpperCase();
