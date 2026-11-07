@@ -193,6 +193,95 @@ create trigger sync_driving_income_to_finance
 after insert or update or delete on public.driving_sessions
 for each row execute function public.sync_household_operational_income();
 
+-- Link the costs entered in each Uber/99 shift to the same Renan cash account.
+-- Each cost line has its own stable source key, so editing a shift updates rather than duplicates it.
+create or replace function public.sync_driving_costs_to_finance()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $
+declare
+  v_household_id uuid;
+  v_source_id uuid;
+  v_account_id uuid;
+  v_date date;
+  v_cost record;
+  v_operation text;
+begin
+  if TG_OP = 'DELETE' then
+    v_household_id := OLD.household_id;
+    v_source_id := OLD.id;
+    delete from public.transactions
+      where household_id = v_household_id
+        and operation like 'pv:auto:99_uber_cost:' || v_source_id::text || ':%';
+    return OLD;
+  end if;
+
+  v_household_id := NEW.household_id;
+  v_source_id := NEW.id;
+  v_date := coalesce(NEW.date,current_date);
+
+  select id into v_account_id
+    from public.accounts
+    where household_id = v_household_id and archived = false
+      and (name ilike '%renan%' or (holder = 'usuario' and type = 'pessoal'))
+    order by case when name ilike '%renan%' then 0 else 1 end, created_at
+    limit 1;
+
+  if v_account_id is null then
+    raise exception 'Conta Pessoal — Renan não encontrada para registrar os custos do turno.';
+  end if;
+
+  for v_cost in
+    select * from (values
+      ('combustivel','Combustível',coalesce(NEW.fuel_cost,0)),
+      ('pedagios','Pedágios',coalesce(NEW.tolls,0)),
+      ('lavagem','Lavagem',coalesce(NEW.wash,0)),
+      ('manutencao','Manutenção',coalesce(NEW.maintenance,0)),
+      ('aluguel','Aluguel do veículo',coalesce(NEW.rent_alloc,0)),
+      ('outros','Outros custos',coalesce(NEW.other_costs,0))
+    ) as costs(code,label,amount)
+  loop
+    v_operation := 'pv:auto:99_uber_cost:' || v_source_id::text || ':' || v_cost.code;
+
+    if v_cost.amount <= 0 then
+      delete from public.transactions
+        where household_id = v_household_id and operation = v_operation;
+    else
+      insert into public.transactions(
+        household_id,date,amount,direction,description,category,account_id,holder,
+        operation,status,nature,notes
+      ) values (
+        v_household_id,v_date,round(v_cost.amount,2),'saida',
+        'Uber/99 · ' || v_cost.label || ' · turno ' || v_date::text,
+        v_cost.label,v_account_id,'usuario',v_operation,'confirmado','pessoal',
+        'Gerado automaticamente a partir dos custos informados no turno. Ajuste o turno para corrigir este valor.'
+      )
+      on conflict (household_id,operation) where operation like 'pv:auto:%'
+      do update set
+        date = excluded.date,
+        amount = excluded.amount,
+        direction = 'saida',
+        description = excluded.description,
+        category = excluded.category,
+        account_id = excluded.account_id,
+        holder = 'usuario',
+        status = 'confirmado',
+        nature = 'pessoal',
+        notes = excluded.notes;
+    end if;
+  end loop;
+
+  return NEW;
+end;
+$;
+
+drop trigger if exists sync_driving_costs_to_finance_trigger on public.driving_sessions;
+create trigger sync_driving_costs_to_finance_trigger
+after insert or update or delete on public.driving_sessions
+for each row execute function public.sync_driving_costs_to_finance();
+
 drop trigger if exists sync_beverage_income_to_finance on public.beverage_events;
 create trigger sync_beverage_income_to_finance
 after insert or update or delete on public.beverage_events
