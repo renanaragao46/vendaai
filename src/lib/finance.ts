@@ -38,7 +38,7 @@ export function calculateAccountBalances<T extends FinancialAccount>(
       }
     }
 
-    return { ...account, balance: cents / 100 };
+    return { ...account, balance: cents / 100, balance_status: account.initial_status === "confirmado" ? "confirmado" : cents !== 0 ? "parcial" : "a_confirmar" };
   });
 }
 
@@ -75,4 +75,40 @@ const CLOSED_DEBT_STATUSES = new Set([
 
 export function isDebtOpen(debt: { status?: string | null }): boolean {
   return !CLOSED_DEBT_STATUSES.has(normalizeStatus(debt.status));
+}
+
+export function calculateWealthTotals(
+  assets: Array<{ kind?: string | null; class?: string | null; value?: number | string | null; status?: string | null }> = [],
+  debts: Array<{ status?: string | null; balance_informed?: number | string | null }> = [],
+  accounts: FinancialAccount[] = [],
+  transactions: FinancialMovement[] = [],
+) {
+  const confirmedAssets = assets.filter(
+    (asset) =>
+      asset.status === "confirmado" &&
+      normalizeStatus(asset.kind) === "ativo" &&
+      !/(conta|caixa|dinheiro)/i.test(String(asset.class ?? "")),
+  );
+  const confirmedLiabilities = assets.filter(
+    (asset) => asset.status === "confirmado" && normalizeStatus(asset.kind) === "passivo",
+  );
+  const assetValue = confirmedAssets.reduce((total, asset) => total + Number(asset.value ?? 0), 0);
+  const assetLiabilities = confirmedLiabilities.reduce((total, asset) => total + Number(asset.value ?? 0), 0);
+  const debtTotal = debts
+    .filter(isDebtOpen)
+    .reduce((total, debt) => total + Number(debt.balance_informed ?? 0), 0);
+  const cashTotal = calculateCashTotal(accounts, transactions);
+
+  return {
+    confirmedAssets,
+    confirmedLiabilities,
+    assetValue,
+    assetLiabilities,
+    debtTotal,
+    cashTotal,
+    cash: cashTotal,
+    totalLiabilities: assetLiabilities + debtTotal,
+    netWorth: assetValue + cashTotal - assetLiabilities - debtTotal,
+    pendingOpeningBalances: accounts.filter((account) => account.initial_status !== "confirmado").length,
+  };
 }
