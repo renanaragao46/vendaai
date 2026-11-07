@@ -43,7 +43,7 @@ begin
           where household_id = h.id and archived = false;
         if v_active_count < 4 then
           insert into public.accounts(household_id,name,holder,type,initial_balance,initial_status)
-          values(h.id,'Mercado Pago — Nossa','conjunto','digital',0,'confirmado');
+          values(h.id,'Mercado Pago — Nossa','conjunto','digital',null,'a_confirmar');
         end if;
       end if;
     end if;
