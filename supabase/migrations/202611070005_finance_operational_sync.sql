@@ -391,6 +391,117 @@ create trigger sync_driving_costs_to_finance
 after insert or update or delete on public.driving_sessions
 for each row execute function public.sync_uber_costs_to_finance();
 
+-- Backfill already-recorded operational history once, using the same stable source keys.
+insert into public.transactions(
+  household_id,date,amount,direction,description,category,account_id,holder,
+  operation,status,nature,notes
+)
+select
+  s.household_id,s.date,round(s.gross+coalesce(s.tips,0),2),'entrada',
+  'Uber/99 · ' || s.platform || ' · turno ' || s.date::text,
+  case when s.platform='99' then '99' else 'Uber' end,
+  a.id,'usuario','pv:auto:99_uber:' || s.id::text,'confirmado','pessoal',
+  'Vinculado automaticamente ao turno já registrado.'
+from public.driving_sessions s
+join lateral (
+  select id from public.accounts
+  where household_id=s.household_id and archived=false
+    and (name ilike '%renan%' or (holder='usuario' and type='pessoal'))
+  order by case when name ilike '%renan%' then 0 else 1 end,created_at
+  limit 1
+) a on true
+where s.gross+coalesce(s.tips,0)>0
+on conflict (household_id,operation) where operation like 'pv:auto:%'
+do update set date=excluded.date,amount=excluded.amount,direction='entrada',
+  description=excluded.description,category=excluded.category,account_id=excluded.account_id,
+  holder='usuario',status='confirmado',nature='pessoal',notes=excluded.notes;
+
+insert into public.transactions(
+  household_id,date,amount,direction,description,category,account_id,holder,
+  operation,status,nature,notes
+)
+select
+  s.household_id,coalesce(s.date,current_date),round(cost.amount,2),'saida',
+  'Uber/99 · ' || cost.label || ' · turno ' || coalesce(s.date::text,current_date::text),
+  cost.label,a.id,'usuario',
+  'pv:auto:99_uber_cost:' || s.id::text || ':' || cost.code,
+  'confirmado','pessoal','Vinculado automaticamente ao custo do turno já registrado.'
+from public.driving_sessions s
+cross join lateral (values
+  ('combustivel','Combustível',coalesce(s.fuel_cost,0)),
+  ('pedagios','Pedágios',coalesce(s.tolls,0)),
+  ('lavagem','Lavagem',coalesce(s.wash,0)),
+  ('manutencao','Manutenção',coalesce(s.maintenance,0)),
+  ('aluguel','Aluguel do veículo',coalesce(s.rent_alloc,0)),
+  ('outros','Outros custos',coalesce(s.other_costs,0))
+) as cost(code,label,amount)
+join lateral (
+  select id from public.accounts
+  where household_id=s.household_id and archived=false
+    and (name ilike '%renan%' or (holder='usuario' and type='pessoal'))
+  order by case when name ilike '%renan%' then 0 else 1 end,created_at
+  limit 1
+) a on true
+where cost.amount>0
+on conflict (household_id,operation) where operation like 'pv:auto:%'
+do update set date=excluded.date,amount=excluded.amount,direction='saida',
+  description=excluded.description,category=excluded.category,account_id=excluded.account_id,
+  holder='usuario',status='confirmado',nature='pessoal',notes=excluded.notes;
+
+insert into public.transactions(
+  household_id,date,amount,direction,description,category,account_id,holder,
+  operation,status,nature,notes
+)
+select
+  b.household_id,coalesce(b.date,current_date),
+  round(case when jsonb_array_length(coalesce(b.items,'[]'::jsonb))>0 then
+    (select coalesce(sum(coalesce((item->>'qty_sold')::numeric,0)*coalesce((item->>'unit_price')::numeric,0)),0)
+     from jsonb_array_elements(b.items) as items(item))
+    else coalesce(b.revenue,0) end,2),
+  'entrada','Bebidas · ' || b.name,'Bebidas/eventos',a.id,'conjunto',
+  'pv:auto:bebidas:' || b.id::text,'confirmado','empresarial',
+  'Vinculado automaticamente ao evento já realizado.'
+from public.beverage_events b
+join lateral (
+  select id from public.accounts
+  where household_id=b.household_id and archived=false
+    and (name ilike '%mercado pago%' or holder in ('conjunto','nossa'))
+  order by case when name ilike '%mercado pago%' then 0 else 1 end,created_at
+  limit 1
+) a on true
+where lower(translate(coalesce(b.status,''),'áàâãéêíóôõúç','aaaaeeiooouc')) similar to '%(realiz|conclu|finaliz)%'
+  and (case when jsonb_array_length(coalesce(b.items,'[]'::jsonb))>0 then
+    (select coalesce(sum(coalesce((item->>'qty_sold')::numeric,0)*coalesce((item->>'unit_price')::numeric,0)),0)
+     from jsonb_array_elements(b.items) as items(item))
+    else coalesce(b.revenue,0) end)>0
+on conflict (household_id,operation) where operation like 'pv:auto:%'
+do update set date=excluded.date,amount=excluded.amount,direction='entrada',
+  description=excluded.description,category=excluded.category,account_id=excluded.account_id,
+  holder='conjunto',status='confirmado',nature='empresarial',notes=excluded.notes;
+
+insert into public.transactions(
+  household_id,date,amount,direction,description,category,account_id,holder,
+  operation,status,nature,notes
+)
+select
+  e.household_id,e.date,round(e.revenue,2),'entrada',
+  'MIMORA · repasse recebido · ' || coalesce(e.product,e.campaign,e.store,'venda'),
+  'MIMORA',a.id,'conjunto','pv:auto:mimora:' || e.id::text,
+  'confirmado','empresarial','Vinculado automaticamente ao repasse já registrado.'
+from public.ecommerce_daily_metrics e
+join lateral (
+  select id from public.accounts
+  where household_id=e.household_id and archived=false
+    and (name ilike '%mercado pago%' or holder in ('conjunto','nossa'))
+  order by case when name ilike '%mercado pago%' then 0 else 1 end,created_at
+  limit 1
+) a on true
+where coalesce(e.approved_payments,0)>0 and coalesce(e.revenue,0)>0
+on conflict (household_id,operation) where operation like 'pv:auto:%'
+do update set date=excluded.date,amount=excluded.amount,direction='entrada',
+  description=excluded.description,category=excluded.category,account_id=excluded.account_id,
+  holder='conjunto',status='confirmado',nature='empresarial',notes=excluded.notes;
+
 -- A user belongs to one shared life workspace. Accept only one pending invite.
 create or replace function public.accept_my_invites()
 returns int
