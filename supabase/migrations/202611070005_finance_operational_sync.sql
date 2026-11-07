@@ -196,8 +196,7 @@ begin
     v_destination := 'mercado_pago';
     v_holder := 'conjunto';
     v_date := case when TG_OP = 'DELETE' then OLD.date else NEW.date end;
-    v_amount := case when TG_OP = 'DELETE' or coalesce(NEW.approved_payments,0) <= 0
-                     then 0 else coalesce(NEW.revenue,0) end;
+    v_amount := case when TG_OP = 'DELETE' then 0 else coalesce(NEW.revenue,0) end;
     v_category := 'MIMORA';
     v_description := 'MIMORA · repasse recebido · ' ||
       case when TG_OP = 'DELETE' then 'venda'
