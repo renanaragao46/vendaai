@@ -2,24 +2,24 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { WorkspaceProvider } from "@/lib/workspace";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/app/app-shell";
-
 export const Route = createFileRoute("/_authenticated/_shell")({
   beforeLoad: async ({ context }) => {
-    const { data: memberships, error } = await (supabase as any)
-      .from("workspace_members").select("workspace_id, role")
-      .eq("user_id", context.user.id).limit(1);
+    const user = (context as any).user;
+    if (!user?.id) throw redirect({ to: "/auth" });
+    const { data: members, error } = await (supabase as any).from("household_members")
+      .select("household_id, role").eq("user_id", user.id).limit(1);
     if (error) throw error;
-    const membership = memberships?.[0];
-    if (!membership) throw redirect({ to: "/access-pending" });
-    const { data: workspace, error: workspaceError } = await (supabase as any)
-      .from("workspaces").select("id, name").eq("id", membership.workspace_id).single();
-    if (workspaceError) throw workspaceError;
-    return { workspace, role: membership.role };
+    const member = members?.[0];
+    if (!member) throw redirect({ to: "/onboarding" });
+    const { data: household, error: householdError } = await (supabase as any).from("households")
+      .select("id,name").eq("id", member.household_id).single();
+    if (householdError) throw householdError;
+    return { household, role: member.role };
   },
   component: ShellLayout,
 });
 function ShellLayout() {
-  const { user } = Route.useRouteContext();
-  const { workspace, role } = Route.useRouteContext() as any;
-  return <WorkspaceProvider value={{ workspace, role, userId: user.id, email: user.email ?? null }}><AppShell /></WorkspaceProvider>;
+  const { user } = Route.useRouteContext() as any;
+  const { household, role } = Route.useRouteContext() as any;
+  return <WorkspaceProvider value={{ workspace: { id: household.id, name: household.name }, role, userId: user.id, email: user.email ?? null }}><AppShell /></WorkspaceProvider>;
 }
