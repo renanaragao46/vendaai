@@ -183,12 +183,12 @@ begin
     'week_start','segunda','timezone','America/Sao_Paulo','currency','BRL','plan_start','2026-11-07','plan_end','2027-05-07',
     'reserve_target', null, 'reserve_months_ref','3–6 meses de despesas essenciais (referência)',
     'uber_goal_day_min',350,'uber_goal_day_max',500,'uber_goal_week_min',2500,'uber_goal_week_ideal',3000,'uber_goals_status','historico',
-    'car_rent_week',735,'car_rent_status','a_confirmar','partner_label','Companheira','user_label','Usuário')) returning id into h;
+    'car_rent_week',735,'car_rent_status','a_confirmar','partner_label','Leticia','user_label','Renan')) returning id into h;
   insert into public.household_members(household_id,user_id,email,display_name,role) values (h, uid, auth.jwt()->>'email', p_display_name, 'owner');
 
   insert into public.accounts(household_id,name,holder,type) values
-    (h,'Pessoal — Usuário','usuario','pessoal'),(h,'Pessoal — Companheira','companheira','pessoal'),
-    (h,'PJ (quando aberta)','empresa','pj'),(h,'Dinheiro em espécie / caixa da operação','usuario','especie');
+    (h,'Pessoal — Renan','usuario','pessoal'),(h,'Pessoal — Leticia','companheira','pessoal'),
+    (h,'Mercado Pago — Nossa','conjunto','digital'),(h,'Dinheiro em espécie','usuario','especie');
   insert into public.categories(household_id,name,kind) select h, c, 'despesa' from unnest(array['Moradia','Alimentação','Combustível','Aluguel do veículo','Manutenção','Telefone/internet','Saúde','Lazer','Maçonaria/compromissos pessoais','Parcelas de dívidas','Impostos','Taxas','Estoque','Gelo','Transporte/logística','Anúncios','Taxas de plataforma','Pró-labore','Aporte','Empréstimo entre partes','Retirada','Investimento','Outros']) c;
   insert into public.categories(household_id,name,kind) select h, c, 'receita' from unnest(array['Uber','99','Bebidas/eventos','MIMORA','Salário CLT','Reembolso','Outros']) c;
 
@@ -199,7 +199,7 @@ begin
    (h,'Aluguel do veículo (R$735/semana)','despesa','usuario','Aluguel do veículo',3185,'semanal',true,'a_confirmar','Histórico: R$735/semana ≈ R$3.185/mês (735×52/12) ≈ R$38.220/ano enquanto o contrato semanal estiver ativo. Confirmar contrato atual.'),
    (h,'Maçonaria','despesa','usuario','Maçonaria/compromissos pessoais',250,'mensal',false,'a_confirmar','Cerca de R$250/mês + custos associados. Confirmar valor atual.'),
    (h,'Parcela empréstimo familiar','despesa','usuario','Parcelas de dívidas',566,'mensal',true,'a_confirmar','Estimativa ~R$566 — conferir contrato.'),
-   (h,'Salário CLT companheira (novo emprego a partir de 09/11/2026)','receita','companheira','Salário CLT',null,'mensal',false,'a_confirmar','"R$2 mil e alguma coisa" — líquido/bruto desconhecido. Previsão pessoal a confirmar; NÃO é dinheiro disponível nem receita PJ.');
+   (h,'Salário CLT Leticia (novo emprego a partir de 09/11/2026)','receita','companheira','Salário CLT',null,'mensal',false,'a_confirmar','"R$2 mil e alguma coisa" — líquido/bruto desconhecido. Previsão pessoal a confirmar; NÃO é dinheiro disponível nem receita PJ.');
   insert into public.budgets(household_id,name,kind,envelope,status,notes) select h, e, 'envelope', e, 'a_confirmar', 'Percentual configurável — definir após conhecer receitas e despesas reais.' from unnest(array['Operação','Vida/Essenciais','Obrigações','Proteção/Reserva','Crescimento']) e;
 
   insert into public.project_nodes(household_id,label,description,status,pos_x,pos_y) values (h,'Projeto de Vida','Construir em silêncio. Executar com método.','em_andamento',0,0) returning id into root;
@@ -210,7 +210,7 @@ begin
       if kids[i][j] <> '' then
         insert into public.project_nodes(household_id,parent_id,label,status,pos_x,pos_y,description) values (h,b,kids[i][j],
           case when kids[i][j] like 'Futuro%' or kids[i][j] like 'Avaliar%' then 'ideia' else 'planejado' end,(i-3)*300,300+(j-1)*80,
-          case kids[i][j] when 'Futuro negócio de moda feminina' then 'Ideia futura da companheira — não é receita atual.' when 'Avaliar abertura de CNPJ' then 'Em avaliação — não assumir aberto.' when 'Venda de bebidas em eventos/estádio' then 'Ideia/operação a estruturar; sem receita confirmada.' when 'MIMORA / Kaiross (e-commerce)' then 'Três escovas, tráfego pago em teste. Sem conversões atuais confirmadas.' else null end) returning id into n;
+          case kids[i][j] when 'Futuro negócio de moda feminina' then 'Ideia futura da Leticia — não é receita atual.' when 'Avaliar abertura de CNPJ' then 'Em avaliação — não assumir aberto.' when 'Venda de bebidas em eventos/estádio' then 'Ideia/operação a estruturar; sem receita confirmada.' when 'MIMORA / Kaiross (e-commerce)' then 'Três escovas, tráfego pago em teste. Sem conversões atuais confirmadas.' else null end) returning id into n;
         insert into public.project_edges(household_id,source,target) values (h,b,n);
       end if;
     end loop;
@@ -248,7 +248,7 @@ begin
   insert into public.notes(household_id,title,body,tags,pinned) values
    (h,'MIMORA — situação inicial','Loja com três escovas de cabelo e tráfego pago (Meta/WhatsApp) em fase inicial de teste; campanhas/vídeos em ajuste. Histórico anterior de teste: 30 conversas e zero conversões — histórico, não prova resultado atual. Não escalar por volume de mensagens; escalar só após conversão, margem positiva e repetibilidade. Confirmar frete e prazos na plataforma antes de divulgar.','{mimora,historico}',true),
    (h,'Carro — possível aquisição a partir de jan/2027','Não registrar como propriedade. Exigir contrato por escrito, custo total, titularidade e condições de saída antes de qualquer decisão.','{carro,a_confirmar}',true),
-   (h,'CNPJ — em avaliação','Ideia de abrir no nome da companheira (relata nome limpo). Titular do CNPJ é responsável legal; nome limpo não garante crédito. Definir participação, poderes, responsabilidades, CNAEs, regime, município, licenças e contador antes de abrir. Não "aquecer" CNPJ com movimentação artificial.','{cnpj}',false),
+   (h,'CNPJ — em avaliação','Ideia de abrir no nome da Leticia (relata nome limpo). Titular do CNPJ é responsável legal; nome limpo não garante crédito. Definir participação, poderes, responsabilidades, CNAEs, regime, município, licenças e contador antes de abrir. Não "aquecer" CNPJ com movimentação artificial.','{cnpj}',false),
    (h,'Moda feminina — ideia futura','Sourcing no Brás, vendas/entregas no ABC com Meta, Instagram, site, WhatsApp e automação. Validar sem grande estoque (lote pequeno, pré-venda, consignação se viável). Papéis: usuário — tecnologia, anúncios, automação, finanças; companheira — curadoria, fornecedores, produto, atendimento (validar agenda após novo emprego). Não misturar posicionamento com escovas sem testar coerência de marca.','{moda,ideia}',false),
    (h,'Bebidas — exemplo ilustrativo (não é venda real)','Exemplo: 100 unidades a R$3, venda a R$6 = R$600 de receita e R$300 de margem bruta ANTES de gelo, transporte, taxas e perdas. Validar autorização/regras do evento e testar demanda antes de comprar coolers/estoque adicional.','{bebidas,ilustrativo}',false);
   return h;
