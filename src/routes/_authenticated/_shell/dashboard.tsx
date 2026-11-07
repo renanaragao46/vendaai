@@ -342,9 +342,9 @@ function CrudSection({def,householdId,userId,onNavigate,onQuickTransaction,initi
  const fieldOptions=(f:any):{value:string;label:string}[]|null=>{
   const k=def.table+":"+f.key;
   const choices:Record<string,{value:string;label:string}[]> = {
-   "accounts:type":[{value:"pessoal",label:"Pessoal"},{value:"empresarial",label:"Empresarial / PJ"},{value:"especie",label:"Dinheiro físico"}],
+   "accounts:type":[{value:"pessoal",label:"Pessoal"},{value:"compartilhado",label:"Conta compartilhada"},{value:"digital",label:"Conta digital"},{value:"empresarial",label:"Empresarial / PJ"},{value:"especie",label:"Dinheiro físico"}],
    "accounts:initial_status":[{value:"confirmado",label:"Confirmado"},{value:"a_confirmar",label:"A confirmar"}],
-   "accounts:holder":[{value:"usuario",label:"Renan"},{value:"companheira",label:"Leticia"},{value:"empresa",label:"Empresa"}],
+   "accounts:holder":[{value:"usuario",label:"Renan"},{value:"companheira",label:"Leticia"},{value:"conjunto",label:"Nossa conta (compartilhada)"},{value:"empresa",label:"Empresa"}],
    "debts:status":[{value:"a_confirmar",label:"A confirmar"},{value:"ativa",label:"Ativa"},{value:"quitada",label:"Quitada"}],
    "debts:holder":[{value:"usuario",label:"Renan"},{value:"companheira",label:"Leticia"},{value:"empresa",label:"Empresa"}],
    "budgets:kind":[{value:"receita",label:"Receita"},{value:"despesa",label:"Despesa"},{value:"envelope",label:"Envelope"}],
