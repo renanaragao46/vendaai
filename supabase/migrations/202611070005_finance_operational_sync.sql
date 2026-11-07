@@ -16,6 +16,12 @@ begin
       where household_id=h.id and lower(name)=lower('Pessoal — Usuário');
     update public.accounts set name='Pessoal — Leticia',holder='companheira',type='pessoal'
       where household_id=h.id and lower(name)=lower('Pessoal — Companheira');
+    update public.accounts set holder='usuario',type='pessoal'
+      where household_id=h.id and lower(name)=lower('Pessoal — Renan');
+    update public.accounts set holder='companheira',type='pessoal'
+      where household_id=h.id and lower(name)=lower('Pessoal — Leticia');
+    update public.accounts set holder='conjunto',type='especie'
+      where household_id=h.id and lower(name)=lower('Dinheiro em espécie');
     update public.accounts set name='Dinheiro em espécie',holder='conjunto',type='especie'
       where household_id=h.id and lower(name)=lower('Dinheiro em espécie / caixa da operação');
 
