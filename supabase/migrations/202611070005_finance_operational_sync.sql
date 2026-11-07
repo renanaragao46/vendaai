@@ -217,7 +217,7 @@ begin
     account_id = excluded.account_id,
     holder = excluded.holder,
     status = 'confirmado',
-    nature = 'receita',
+    nature = case when v_destination = 'renan' then 'pessoal' else 'empresarial' end,
     notes = excluded.notes;
 
   if TG_OP = 'DELETE' then return OLD; end if;
