@@ -1,73 +1,46 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Bot, KanbanSquare, Package, Sparkles } from "lucide-react";
+import { ArrowRight, ShieldCheck, Target, Wallet, Route as RouteIcon, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "VendaAI — Seu time de vendas com IA" },
-      {
-        name: "description",
-        content: "CRM, catálogo, base de conhecimento e agente de vendas com IA em uma só plataforma.",
-      },
-      { property: "og:title", content: "VendaAI — Seu time de vendas com IA" },
-      {
-        property: "og:description",
-        content: "CRM, catálogo, base de conhecimento e agente de vendas com IA em uma só plataforma.",
-      },
+      { title: "Projeto de Vida — Painel privado" },
+      { name: "description", content: "Gestão familiar, financeira e empresarial em um só lugar." },
     ],
   }),
   component: Landing,
 });
 
-const FEATURES = [
-  { icon: KanbanSquare, title: "CRM com pipeline", text: "Leads por etapa, temperatura e próxima ação." },
-  { icon: Package, title: "Catálogo de produtos", text: "Preços, promoções, estoque e links de checkout." },
-  { icon: Bot, title: "Agente de IA", text: "Configure tom, objetivos e regras do seu vendedor virtual." },
+const pillars = [
+  { icon: Wallet, title: "Finanças e patrimônio", text: "Entradas, saídas, dívidas, reservas e evolução patrimonial." },
+  { icon: RouteIcon, title: "Operações e negócios", text: "Uber/99, vendas presenciais, MIMORA e novos projetos." },
+  { icon: Target, title: "Metas e execução", text: "Plano de 180 dias, rotina, tarefas e prioridades." },
+  { icon: BookOpen, title: "Conhecimento", text: "Biblioteca de aprendizados, decisões e regras do projeto." },
 ];
 
 function Landing() {
   return (
-    <div className="min-h-screen bg-background">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <div className="flex items-center gap-2 font-display font-semibold">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-primary-foreground">
-            <Sparkles className="h-4 w-4" />
-          </span>
-          VendaAI
+    <main className="min-h-screen bg-background">
+      <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8">
+        <div className="flex items-center gap-3">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-brand text-white font-bold">PV</div>
+          <div><p className="font-display font-bold">PROJETO DE VIDA</p><p className="text-xs text-muted-foreground">Planejamento • execução • patrimônio</p></div>
         </div>
-        <Button asChild variant="ghost">
-          <Link to="/auth">Entrar</Link>
-        </Button>
+        <Button asChild><Link to="/auth">Acessar painel <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
       </header>
-      <section className="mx-auto max-w-6xl px-6 pb-20 pt-16 text-center sm:pt-24">
-        <span className="inline-flex rounded-full border bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
-          Vendas conversacionais com IA
-        </span>
-        <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-bold text-foreground sm:text-6xl">
-          Transforme conversas em <span className="bg-brand bg-clip-text text-transparent">vendas</span>
-        </h1>
-        <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
-          Organize leads, produtos e conhecimento do seu negócio e prepare um agente de IA que vende do seu jeito.
-        </p>
-        <div className="mt-8 flex justify-center gap-3">
-          <Button asChild size="lg">
-            <Link to="/auth" search={{ mode: "signup" }}>Criar conta grátis</Link>
-          </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link to="/auth">Já tenho conta</Link>
-          </Button>
+      <section className="mx-auto grid max-w-7xl gap-12 px-5 pb-16 pt-12 sm:px-8 lg:grid-cols-[1.15fr_.85fr] lg:items-center lg:pt-20">
+        <div>
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1.5 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4 text-primary" /> Espaço privado para duas pessoas</div>
+          <h1 className="max-w-3xl font-display text-4xl font-bold tracking-tight sm:text-6xl">Uma vida organizada se constrói com <span className="text-primary">decisões bem executadas.</span></h1>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">Centralize a vida financeira, as operações de renda, os negócios, as metas e a rotina em um único painel compartilhado.</p>
+          <div className="mt-8 flex flex-wrap gap-3"><Button asChild size="lg"><Link to="/auth">Entrar com segurança <ArrowRight className="ml-2 h-4 w-4" /></Link></Button><span className="self-center text-xs text-muted-foreground">Acesso somente por contas autorizadas.</span></div>
         </div>
-        <div className="mt-20 grid gap-4 text-left sm:grid-cols-3">
-          {FEATURES.map((f) => (
-            <div key={f.title} className="rounded-2xl border bg-card p-6 shadow-soft">
-              <f.icon className="h-6 w-6 text-primary" />
-              <h3 className="mt-4 font-semibold text-foreground">{f.title}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{f.text}</p>
-            </div>
-          ))}
+        <div className="grid gap-3 sm:grid-cols-2">
+          {pillars.map((p) => <div key={p.title} className="rounded-2xl border bg-card p-5 shadow-soft"><p.icon className="h-6 w-6 text-primary" /><h2 className="mt-4 font-semibold">{p.title}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{p.text}</p></div>)}
         </div>
       </section>
-    </div>
+      <footer className="mx-auto flex max-w-7xl items-center gap-2 border-t px-5 py-6 text-xs text-muted-foreground sm:px-8"><ShieldCheck className="h-4 w-4" /> Seus dados ficam no banco privado, protegidos por autenticação e políticas de acesso.</footer>
+    </main>
   );
 }
