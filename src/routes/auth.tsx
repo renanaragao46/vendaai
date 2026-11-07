@@ -24,7 +24,7 @@ function AuthPage() {
     setLoading(true);
     try {
       if(mode==="login"){const {error}=await supabase.auth.signInWithPassword({email:parsed.data,password});if(error)throw error;window.location.assign("/dashboard");}
-      else if(mode==="signup"){const {data,error}=await supabase.auth.signUp({email:parsed.data,password,options:{data:{display_name:name.trim()}}});if(error)throw error;
+      else if(mode==="signup"){const {data,error}=await supabase.auth.signUp({email:parsed.data,password,options:{data:{display_name:name.trim()},emailRedirectTo:window.location.origin+"/onboarding"}});if(error)throw error;
         if(data.session) window.location.assign("/onboarding"); else setSent(true);
       } else {const {error}=await supabase.auth.resetPasswordForEmail(parsed.data,{redirectTo:window.location.origin+"/reset-password"});if(error)throw error;setSent(true);}
     } catch(err){toast.error((err as Error).message);} finally{setLoading(false);}
